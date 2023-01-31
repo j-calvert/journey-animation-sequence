@@ -1,76 +1,68 @@
 import flyZoomAndRotate from './fly-zoom-and-rotate.js';
 import animatePath from './animate-path.js';
-
-import tours from './tour_files.js';
-
-import { createGeoJSONCircle, getGeoJson } from './util.js';
+import * as THREE from './three.module.js';
+import { OrbitControls } from './OrbitControls.js';
+import { Spherical } from './Spherical.js';
+import { getLinePainter } from './line-utils.js';
 
 const urlSearchParams = new URLSearchParams(window.location.search);
-const { src: srcQueryParam } = Object.fromEntries(urlSearchParams.entries());
+const { tour: tourQueryParam } = Object.fromEntries(urlSearchParams.entries());
 
-let src = srcQueryParam ?? 'sweden_norway_2022';
+let tour = tourQueryParam ?? 'mexico_spring_2022';
 
 // Ref: https://account.mapbox.com/access-tokens
+// pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg is public access token
 mapboxgl.accessToken =
   'pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg';
 
-const srcs = src in tours ? tours[src] : [src];
-
 let initialized = false,
   bearing = 0,
-  altitude = 5000000,
-  pitch = 30;
+  altitude = 4000000,
+  pitch = 20;
+
+const DURATION = 30000, // time spent animating path, per day.  Take it slow ;)
+  PANO_PIXEL_MAX_HEIGHT = 300,
+  PANO_ASPECT_RATIO = 1.618033; // https://en.wikipedia.org/wiki/Golden_ratio
 
 // Wrapping EVERYTHING in an IIFE (Immediately Invoked Function Expression)
 // so we can block waiting on the first GeoJson load and get the coorect
 // coordinate from which to initialize the map
 (async () => {
-  const firstGeoJson = await getGeoJson(srcs[0]);
+  const tourGeo = await fetch(`./data/GeoJSON/${tour}.tour.geojson`).then((d) =>
+    d.json()
+  );
+  const lineStrings = tourGeo.features.filter(
+    (f) => f.geometry.type === 'LineString'
+  );
 
   const map = new mapboxgl.Map({
     container: 'map',
     projection: 'globe',
     style: 'mapbox://styles/mapbox/satellite-streets-v12',
-    zoom: 3,
+    zoom: 10,
     center: {
-      lng: firstGeoJson.geometry.coordinates[0][0],
-      lat: firstGeoJson.geometry.coordinates[0][1],
+      lng: lineStrings[0].geometry.coordinates[0][0],
+      lat: lineStrings[0].geometry.coordinates[0][1],
     },
     pitch: pitch,
     bearing: bearing,
   });
 
-  window.map = map;
+  map.addControl(
+    new mapboxgl.FullscreenControl({
+      container: document.querySelector('body'),
+    })
+  );
+
+  window.document.map = map;
 
   map.on('load', async () => {
     // add 3d, sky and fog
     add3D();
-
-    const lineStrings = [];
-
-    function handleSrc(src) {
-      return new Promise(async (resolve) => {
-        const trackGeojson = await getGeoJson(src);
-        lineStrings.push(trackGeojson);
-        await playAnimations(trackGeojson);
-        const mls = turf.featureCollection(lineStrings);
-        const bounds = turf.bbox(mls);
-
-        map.fitBounds(bounds, {
-          duration: 3000,
-          pitch: 30,
-          bearing: 0,
-          padding: 120,
-        });
-        setTimeout(() => {}, 3000);
-        resolve();
-        return;
-      });
+    for (const lineString of lineStrings) {
+      await playAnimation(lineString);
     }
-
-    for (const src of srcs) {
-      await handleSrc(src);
-    }
+    // await playAnimation(lineStrings[0]);
   });
 
   const add3D = () => {
@@ -99,14 +91,15 @@ let initialized = false,
       tileSize: 512,
       maxzoom: 14,
     });
-    map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+    map.setTerrain({ source: 'mapbox-dem', exaggeration: 1 });
   };
 
-  const playAnimations = async (trackGeojson) => {
+  const playAnimation = async (trackGeojson) => {
     // Assumes we're dealing with a LineString
     return new Promise(async (resolve) => {
-      const sourceName = 'line_' + trackGeojson.src;
-      const layerName = 'line-layer_' + trackGeojson.src;
+      const key = trackGeojson.properties.key;
+      const sourceName = `linesource_${key}`;
+      const layerName = `linelayer_${key}`;
       // add a geojson source and layer for the linestring to the map
       // Add a line feature and layer. This feature will get updated as we progress the animation
       map.addSource(sourceName, {
@@ -130,21 +123,6 @@ let initialized = false,
         },
       });
 
-      // map.addSource('start-pin-base', {
-      //   type: 'geojson',
-      //   data: createGeoJSONCircle(trackGeojson.geometry.coordinates[0], 0.04),
-      // });
-
-      // map.addLayer({
-      //   id: 'start-fill-pin-base',
-      //   type: 'fill-extrusion',
-      //   source: 'start-pin-base',
-      //   paint: {
-      //     'fill-extrusion-color': '#0bfc03',
-      //     'fill-extrusion-height': 1000,
-      //   },
-      // });
-
       // get the start of the linestring, to be used for animating a zoom-in from high altitude
       const coordinates = trackGeojson.geometry.coordinates;
       const startLatLong = {
@@ -164,53 +142,28 @@ let initialized = false,
         [bearing, altitude, pitch] = await flyZoomAndRotate({
           map,
           targetLngLat: startLatLong,
-          duration: 6000,
+          duration: DURATION / 40,
           startAltitude: altitude,
           startBearing: bearing,
           startPitch: pitch,
           endBearing: endBearing,
-          endAltitude: 10000,
+          endAltitude: 8000,
           endPitch: 50,
         });
         initialized = true;
-      } else {
-        [bearing, altitude, pitch] = await flyZoomAndRotate({
-          map,
-          targetLngLat: startLatLong,
-          duration: 5000,
-          startAltitude: altitude,
-          startBearing: bearing,
-          startPitch: pitch,
-          endBearing: endBearing,
-          endAltitude: 10000,
-          endPitch: 50,
-        });
       }
-      // follow the path while slowly rotating the camera, passing in the camera bearing and altitude from the previous animation
-      bearing = await animatePath({
+      [bearing, altitude, pitch] = await animatePath({
         map,
-        duration: 20000,
+        duration: DURATION,
         path: trackGeojson,
         startBearing: bearing,
         startAltitude: altitude,
-        pitch: 50,
-        layerName,
-      });
-      [bearing, altitude, pitch] = await flyZoomAndRotate({
-        map,
-        targetLngLat: endLatLong,
-        duration: 3000,
-        startAltitude: altitude,
-        startBearing: bearing,
         startPitch: pitch,
-        endBearing: 0,
-        endAltitude: 100000,
-        endPitch: 20,
+        linePainter: getLinePainter(map, layerName),
       });
-
       resolve();
       return;
     });
   };
 })();
-// ^--- ():  The execution of the IIFE
+// ^--- execution of the IIFE

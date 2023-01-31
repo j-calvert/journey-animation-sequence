@@ -1,6 +1,11 @@
 # geo_loader module
 
-To be run locally (pre-deployment).  Takes a directory of GPX files and produces a single GeoJSON file per day, which it puts in a subdirectory called "scrubbed".
+To be run locally (pre-deployment).  Takes a directory of GPX files and produces a single GeoJSON file w/ a FeatureSet, w/ a Feature per LineString.
 
-Prints out the ordered list of these files in a manner that can be pasted in as an entry to tour_files.js.
-
+## Example Usage
+```
+npm install # as needed
+node ./gpx_to_geojson.js sweden_norway_2022 Europe/Stockholm
+node ./gpx_to_geojson.js mexico_spring_2022 America/Mexico_City
+```
+Second arg is a timezone, for which //https://kevinnovak.github.io/Time-Zone-Picker/ is useful.
