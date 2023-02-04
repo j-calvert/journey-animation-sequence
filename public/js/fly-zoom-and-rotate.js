@@ -1,22 +1,18 @@
-import { computeCameraPosition } from './util.js';
+import { moveCamera } from './camera-utils.js';
+import * as Types from './types.js';
 
 const flyZoomAndRotate = async ({
   map,
-  targetLngLat,
+  startLocation,
+  endLocation,
   duration,
-  startAltitude,
-  endAltitude,
-  startBearing,
-  endBearing,
-  startPitch,
-  endPitch,
 }) => {
+  /**
+   * @type {Types.CameraLocation}
+   */
+  let currentLocation = startLocation;
   return new Promise(async (resolve) => {
     let start;
-
-    var currentAltitude;
-    var currentBearing;
-    var currentPitch;
 
     // the animation frame will run as many times as necessary until the duration has been reached
     const frame = async (time) => {
@@ -33,42 +29,34 @@ const flyZoomAndRotate = async ({
         animationPhase = 1;
       }
 
-      currentAltitude =
-        startAltitude +
-        (endAltitude - startAltitude) * d3.easeCubicInOut(animationPhase);
-      // rotate the camera between startBearing and endBearing
-      currentBearing =
-        startBearing +
-        (endBearing - startBearing) * d3.easeCubicInOut(animationPhase);
+      currentLocation = {
+        altitude:
+          startLocation.altitude +
+          (endLocation.altitude - startLocation.altitude) *
+            d3.easeCubicInOut(animationPhase),
+        bearing:
+          startLocation.bearing +
+          (endLocation.bearing - startLocation.bearing) *
+            d3.easeCubicInOut(animationPhase),
+        pitch:
+          startLocation.pitch +
+          (endLocation.pitch - startLocation.pitch) *
+            d3.easeCubicInOut(animationPhase),
+        lngLat: [
+          startLocation.lngLat[0] +
+            (endLocation.lngLat[0] - startLocation.lngLat[0]) *
+              d3.easeCubicInOut(animationPhase),
+          startLocation.lngLat[1] +
+            (endLocation.lngLat[1] - startLocation.lngLat[1]) *
+              d3.easeCubicInOut(animationPhase),
+        ],
+      };
 
-      currentPitch =
-        startPitch +
-        (endPitch - startPitch) * d3.easeCubicInOut(animationPhase);
-
-      // compute corrected camera ground position, so the start of the path is always in view
-      var correctedPosition = computeCameraPosition(
-        currentPitch,
-        currentBearing,
-        targetLngLat,
-        currentAltitude
-      );
-
-      // set the pitch and bearing of the camera
-      const camera = map.getFreeCameraOptions();
-      camera.setPitchBearing(currentPitch, currentBearing);
-
-      // set the position and altitude of the camera
-      camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
-        correctedPosition,
-        currentAltitude
-      );
-
-      // apply the new camera options
-      map.setFreeCameraOptions(camera);
+      moveCamera(map, currentLocation);
 
       // when the animationPhase is done, resolve the promise so the parent function can move on to the next step in the sequence
       if (animationPhase === 1) {
-        resolve([currentBearing, currentAltitude, currentPitch]);
+        resolve(currentLocation);
 
         // return so there are no further iterations of this frame
         return;

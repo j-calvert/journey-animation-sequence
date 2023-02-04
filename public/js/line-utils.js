@@ -45,4 +45,32 @@ function handleWheelEvent(event, p, b, a) {
   }
 }
 
-export { getLinePainter, handleWheelEvent };
+const getLineLayer = (map, key, trackGeojson) => {
+  const sourceName = `linesource_${key}`;
+  const layerName = `linelayer_${key}`;
+  // add a geojson source and layer for the linestring to the map
+  // Add a line feature and layer. This feature will get updated as we progress the animation
+  map.addSource(sourceName, {
+    type: 'geojson',
+    // Line metrics is required to use the 'line-progress' property
+    lineMetrics: true,
+    data: trackGeojson,
+  });
+  map.addLayer({
+    id: layerName,
+    type: 'line',
+    source: sourceName,
+    paint: {
+      'line-color': 'rgba(0,0,0,0)',
+      'line-width': 9,
+      'line-opacity': 0.8,
+    },
+    layout: {
+      'line-cap': 'round',
+      'line-join': 'round',
+    },
+  });
+  return layerName;
+};
+
+export { getLinePainter, handleWheelEvent, getLineLayer };

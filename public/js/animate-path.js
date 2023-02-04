@@ -1,21 +1,21 @@
-import { computeCameraPosition } from './util.js';
 import { handleWheelEvent } from './line-utils.js';
+import { updateClock } from './clock-utils.js';
+import { moveCamera } from './camera-utils.js';
+
 const UX_DEBOUNCE = 500;
 
-const animatePath = async ({
-  map,
-  duration,
-  path,
-  startBearing,
-  startAltitude,
-  startPitch,
-  linePainter,
-}) => {
-  let startTime, ct, pt;
+const animatePath = async ({ map, duration, path, clocation, paintLine }) => {
+  let startTime,
+    prevTime,
+    i = 0;
   let lastUi = -UX_DEBOUNCE;
-  let bearing = startBearing;
-  let altitude = startAltitude;
-  let pitch = startPitch;
+  let isPaused = false;
+  let unpausedTime = 0;
+  let lastDuration = 0;
+  // TODO: Update this to use CameraLocation object
+  let bearing = clocation.bearing;
+  let altitude = clocation.altitude;
+  let pitch = clocation.pitch;
 
   function onWheel(event) {
     [pitch, bearing, altitude] = handleWheelEvent(
@@ -31,91 +31,93 @@ const animatePath = async ({
   // I call scrollZoom.disable();
   //
   // Such is not the case when setting the rates to 0
-  map.scrollZoom.setWheelZoomRate(0);
-  map.scrollZoom.setZoomRate(0);
-  // map.event.preventDefault();
-  map.on('wheel', onWheel);
+  const animateUIOn = () => {
+    map.scrollZoom.setWheelZoomRate(0);
+    map.scrollZoom.setZoomRate(0);
+    // map.event.preventDefault();
+    map.on('wheel', onWheel);
+  };
+  animateUIOn();
+
+  const pauseButton = document.getElementById('datetime');
+  pauseButton.addEventListener('click', function () {
+    isPaused = !isPaused;
+    if (isPaused) {
+      animateUIOff();
+    } else {
+      animateUIOn();
+    }
+  });
+
+  const animateUIOff = () => {
+    map.off('wheel', handleWheelEvent);
+    // Defaults from https://docs.mapbox.com/mapbox-gl-js/api/handlers/#scrollzoomhandler
+    map.scrollZoom.setWheelZoomRate(1 / 450);
+    map.scrollZoom.setZoomRate(1 / 100);
+  };
 
   return new Promise(async (resolve) => {
     const pathDistance = turf.lineDistance(path);
     const frame = async (currentTime) => {
-      if (!startTime) startTime = currentTime;
-      ct = currentTime;
-      if (ct - lastUi > UX_DEBOUNCE && pt) {
-        bearing +=
-          (Math.min(ct - (lastUi + UX_DEBOUNCE), 1) * (ct - pt)) / 5 / 57;
+      if (!startTime) startTime = currentTime; // Try to get
+      if (!prevTime) prevTime = startTime;
+      if (!isPaused) {
+        unpausedTime += currentTime - prevTime;
+      }
+      if (prevTime - lastUi > UX_DEBOUNCE) {
+        // bearing adjustment
+        bearing += (currentTime - prevTime) / 5 / 57;
       }
 
-      const animationPhase = (currentTime - startTime) / duration;
-      // slowly rotate the map at a constant rate
-      // var bearing = startBearing - animationPhase * 120.0;
+      prevTime = currentTime;
 
-      // when the duration is complete, resolve the promise and stop iterating
-      if (animationPhase > 1) {
+      while (
+        unpausedTime / 1000 / duration > path.coordDurations[i] &&
+        i < path.coordDurations.length
+      ) {
+        i++;
+      }
+      if (i >= path.coordDurations.length) {
+        // EXIT
+        // when the duration is complete, resolve the promise and stop iterating
         map.off('wheel', handleWheelEvent);
         // Defaults from https://docs.mapbox.com/mapbox-gl-js/api/handlers/#scrollzoomhandler
         map.scrollZoom.setWheelZoomRate(1 / 450);
         map.scrollZoom.setZoomRate(1 / 100);
-        resolve([bearing, altitude, pitch]);
+        resolve({
+          pitch,
+          bearing,
+          lngLat: [
+            path.geometry.coordinates[path.coordDurations.length - 1][0],
+            path.geometry.coordinates[path.coordDurations.length - 1][1],
+          ],
+          altitude,
+        });
         return;
       }
 
-      // calculate the distance along the path based on the animationPhase
-      const alongPath = turf.along(path, pathDistance * animationPhase).geometry
-        .coordinates;
+      const p = turf.nearestPointOnLine(path, path.geometry.coordinates[i]);
+      const animationPhase = p.properties.location / pathDistance;
+      console.log(`${i} ${animationPhase} ${p} ${p.properties.dist}`);
 
-      const lngLat = {
-        lng: alongPath[0],
-        lat: alongPath[1],
-      };
+      updateClock(
+        luxon.DateTime.fromISO(path.properties.coordTimes[0])
+          .setZone('America/Mexico_City')
+          .plus({ seconds: unpausedTime / 1000 / duration })
+      );
 
-      const np = turf.nearestPointOnLine(path, alongPath);
-      const coordTime = path.properties.coordTimes[np.properties.index];
-
-      if (coordTime) {
-        const dt = luxon.DateTime.fromISO(coordTime).setZone(
-          'America/Mexico_City'
-        );
-
-        const hr_rotation = 30 * dt.hour + dt.minute / 2; //converting current time
-        const min_rotation = 6 * (dt.minute + dt.second / 60);
-
-        document.getElementById(
-          'hour'
-        ).style.transform = `rotate(${hr_rotation}deg)`;
-        document.getElementById(
-          'minute'
-        ).style.transform = `rotate(${min_rotation}deg)`;
-        document.getElementById('date').innerText = dt.toFormat('MMM dd, yyyy');
+      paintLine(animationPhase);
+      if (!isPaused) {
+        moveCamera(map, {
+          pitch,
+          bearing,
+          lngLat: [
+            path.geometry.coordinates[i][0],
+            path.geometry.coordinates[i][1],
+          ],
+          altitude,
+        });
       }
-
-      linePainter(animationPhase);
-      var correctedPosition = computeCameraPosition(
-        pitch,
-        bearing,
-        lngLat,
-        altitude,
-        true // smooth
-      );
-      // set the pitch and bearing of the camera
-      const camera = map.getFreeCameraOptions();
-      camera.setPitchBearing(pitch, bearing);
-
-      // set the position and altitude of the camera
-      camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
-        correctedPosition,
-        altitude
-      );
-
-      // apply the new camera options
-      map.setFreeCameraOptions(camera);
-      // }
-      // } else {
-      //   // console.log(`${currentTime} - ${lastUi} > 4000 not enough gap`);
-      //   user_active = true;
-      // }
-      // repeat!
-      pt = currentTime;
       await window.requestAnimationFrame(frame);
     };
 

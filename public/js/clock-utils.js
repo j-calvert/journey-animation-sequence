@@ -1,0 +1,13 @@
+const updateClock = (dt) => {
+  const hr_rotation = 30 * dt.hour + dt.minute / 2; //converting current time
+  const min_rotation = 6 * (dt.minute + dt.second / 60);
+
+  document.getElementById('hour').style.transform = `rotate(${hr_rotation}deg)`;
+  document.getElementById(
+    'minute'
+  ).style.transform = `rotate(${min_rotation}deg)`;
+  document.getElementById('date').innerText = dt.toFormat('fff');
+  // }document.getElementById('ampm').innerText = dt.toFormat('a');
+};
+
+export { updateClock };
