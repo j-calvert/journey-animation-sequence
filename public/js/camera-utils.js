@@ -13,15 +13,21 @@ function lerp(start, end, amt) {
  * @param {any} map
  * @param {Types.CameraLocation} location - The location object
  */
-const moveCamera = (map, location) => {
-  var correctedPosition = computeCameraPosition(
-    { ...location, smooth: true } // smooth
-  );
+const moveCamera = ({ map, location, smooth, corrected = true }) => {
   // set the pitch and bearing of the camera
   const camera = map.getFreeCameraOptions();
   camera.setPitchBearing(location.pitch, location.bearing);
 
+  var correctedPosition = location.lngLat;
   // set the position and altitude of the camera
+  //   console.log(corrected);
+  if (corrected) {
+    correctedPosition = computeCameraPosition(
+      { ...location, smooth } // smooth
+    );
+  } else {
+    // console.log('Bypassing correction because !corrected');
+  }
   camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
     {
       lng: correctedPosition[0],
@@ -34,6 +40,10 @@ const moveCamera = (map, location) => {
   map.setFreeCameraOptions(camera);
 };
 
+function correctedLocation(location) {
+  return { ...location, lngLat: computeCameraPosition({ ...location }) };
+}
+
 function computeCameraPosition({
   pitch,
   bearing,
@@ -43,6 +53,7 @@ function computeCameraPosition({
 }) {
   var bearingInRadian = bearing / 57.29;
   var pitchInRadian = (90 - pitch) / 57.29;
+  //   console.log(`Calling computeCameraPosition for ${JSON.stringify(lngLat)}`);
 
   var lngDiff =
     ((altitude / Math.tan(pitchInRadian)) * Math.sin(-bearingInRadian)) /
@@ -69,4 +80,29 @@ function computeCameraPosition({
   return newCameraLngLat;
 }
 
-export { moveCamera };
+const cubicInterpLocation = (startLocation, endLocation, animationPhase) => {
+  return {
+    altitude:
+      startLocation.altitude +
+      (endLocation.altitude - startLocation.altitude) *
+        d3.easeCubicInOut(animationPhase),
+    bearing:
+      startLocation.bearing +
+      (endLocation.bearing - startLocation.bearing) *
+        d3.easeCubicInOut(animationPhase),
+    pitch:
+      startLocation.pitch +
+      (endLocation.pitch - startLocation.pitch) *
+        d3.easeCubicInOut(animationPhase),
+    lngLat: [
+      startLocation.lngLat[0] +
+        (endLocation.lngLat[0] - startLocation.lngLat[0]) *
+          d3.easeCubicInOut(animationPhase),
+      startLocation.lngLat[1] +
+        (endLocation.lngLat[1] - startLocation.lngLat[1]) *
+          d3.easeCubicInOut(animationPhase),
+    ],
+  };
+};
+
+export { moveCamera, cubicInterpLocation, correctedLocation };

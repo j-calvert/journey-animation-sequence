@@ -1,10 +1,8 @@
 import flyZoomAndRotate from './fly-zoom-and-rotate.js';
 import animatePath from './animate-path.js';
-import * as THREE from './three.module.js';
-import { OrbitControls } from './OrbitControls.js';
-import { Spherical } from './Spherical.js';
 import { getLineLayer, getLinePainter } from './line-utils.js';
 import * as Types from './types.js';
+import { DEBUG_INFO } from './config.js';
 
 const urlSearchParams = new URLSearchParams(window.location.search);
 const { tour: tourQueryParam } = Object.fromEntries(urlSearchParams.entries());
@@ -14,22 +12,17 @@ let tour = tourQueryParam ?? 'mexico_spring_2022';
 // Ref: https://account.mapbox.com/access-tokens
 // pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg is public access token
 mapboxgl.accessToken =
-  'pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg';
+  'pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGdhdm5xdTB2bWYzcHI4NjBscHRjNm4ifQ.6EXLPhiiPXuEyyYvvNj4wQ';
 
 /**
  * @type {Types.CameraLocation}
  */
 let clocation = {
-  pitch: 20,
+  pitch: 30,
   bearing: 0,
-  lngLat: [122.3321, 47.6062],
+  lngLat: [-122.3321, 47.6062],
   altitude: 4000000,
 };
-
-const SECONDS_PER_SECOND = 1 / 2400, // By default, 1/3  hour of recording is played in 1 second of animation.
-  KM_PER_SECOND = 10, //
-  PANO_PIXEL_MAX_HEIGHT = 300,
-  PANO_ASPECT_RATIO = 1.618033; // https://en.wikipedia.org/wiki/Golden_ratio
 
 // Wrapping EVERYTHING in an IIFE (Immediately Invoked Function Expression)
 // so we can block waiting on the first GeoJson load and get the coorect
@@ -41,12 +34,29 @@ const SECONDS_PER_SECOND = 1 / 2400, // By default, 1/3  hour of recording is pl
   const lineStrings = tourGeo.features.filter(
     (f) => f.geometry.type === 'LineString'
   );
+  // Create a reference for the Wake Lock.
+  let wakeLock = null;
+
+  // create an async function to request a wake lock
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    console.log('Wake Lock is active!');
+  } catch (err) {
+    console.log(`${err.name}, ${err.message}`);
+  }
+  const picPoints = tourGeo.features.filter((f) => f.geometry.type === 'Point');
 
   const enhancedLineStringFeatures = lineStrings.map((l) => {
     const start_time = luxon.DateTime.fromISO(l.properties.coordTimes[0]);
     const end_time = luxon.DateTime.fromISO(
       l.properties.coordTimes[l.properties.coordTimes.length - 1]
     );
+    const picPointsOnLine = picPoints
+      .filter((f) => f.properties.nearestLineKey === l.properties.key)
+      .reduce((acc, cur) => {
+        acc[cur.properties.nearestLinePointIndex] = cur;
+        return acc;
+      }, {});
     return {
       ...l,
       duration: luxon.Interval.fromDateTimes(start_time, end_time).toDuration(
@@ -60,6 +70,7 @@ const SECONDS_PER_SECOND = 1 / 2400, // By default, 1/3  hour of recording is pl
             luxon.DateTime.fromISO(cd)
           ).toDuration('seconds').seconds
       ),
+      picPoints: picPointsOnLine,
     };
   });
 
@@ -98,6 +109,17 @@ const SECONDS_PER_SECOND = 1 / 2400, // By default, 1/3  hour of recording is pl
     }
   });
 
+  if (DEBUG_INFO) {
+    map.on('move', function () {
+      document.getElementById('camera_info').innerText = `pitch: ${map
+        .getPitch()
+        .toFixed(2)} bearing: ${map.getBearing().toFixed(2)} zoom: ${map
+        .getZoom()
+        .toFixed(2)} center: [${map.getCenter().lng.toFixed(3)}, ${map
+        .getCenter()
+        .lat.toFixed(3)}]`;
+    });
+  }
   const add3D = () => {
     // add map 3d terrain and sky layer and fog
     // Add some fog in the background
@@ -150,14 +172,14 @@ const SECONDS_PER_SECOND = 1 / 2400, // By default, 1/3  hour of recording is pl
           endLocation: {
             ...clocation,
             lngLat: lsLngLat,
-            altitude: 20000,
+            altitude: 12000,
+            bearing: endBearing,
           },
-          duration: 2000,
+          duration: 10000,
         });
       }
       clocation = await animatePath({
         map,
-        duration: SECONDS_PER_SECOND, // trackGeojson.duration / SECONDS_PER_SECOND,
         path: trackGeojson,
         clocation,
         paintLine: getLinePainter(map, layerName),

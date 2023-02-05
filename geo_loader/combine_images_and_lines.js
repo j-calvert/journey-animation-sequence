@@ -44,6 +44,7 @@ async function combine_images_and_lines(tracks_src, images_src, dest_file) {
         ...image.properties,
         nearestLineKey: closestTrack.properties.key,
         nearestLinePointLocation: closesPoint.properties.location,
+        nearestLinePointIndex: closesPoint.properties.index,
       },
     };
   });

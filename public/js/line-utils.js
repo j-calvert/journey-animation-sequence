@@ -1,3 +1,12 @@
+import {
+  DEBUG_INFO,
+  MAX_ALTITUDE,
+  MAX_SPEEDUP,
+  MIN_ALTITUDE,
+  MIN_SPEEDUP,
+  ALT_TO_SPEEDUP_FACTOR,
+} from './config.js';
+
 const getLinePainter = (map, layerName) => {
   return function (animationPhase) {
     // Reduce the visible length of the line by using a line-gradient to cutoff the line
@@ -18,6 +27,13 @@ const getLinePainter = (map, layerName) => {
   };
 };
 
+function altitudeToSpeedup(a) {
+  return Math.min(
+    MAX_SPEEDUP,
+    Math.max(MIN_SPEEDUP, a / ALT_TO_SPEEDUP_FACTOR)
+  );
+}
+
 // Return a tweaked version of pitch (p), bearing (b),
 // and altitued (a) based on a wheel event.
 function handleWheelEvent(event, p, b, a) {
@@ -35,11 +51,14 @@ function handleWheelEvent(event, p, b, a) {
     return [
       p,
       b + event.originalEvent.deltaX / 57,
-      Math.max(
-        a +
-          event.originalEvent.deltaY *
-            Math.min(100000, Math.max(10, Math.pow(10, Math.log10(a) - 4))),
-        3000 // Minimum altitude
+      Math.min(
+        Math.max(
+          a +
+            event.originalEvent.deltaY *
+              Math.min(100000, Math.max(10, Math.pow(10, Math.log10(a) - 4))),
+          MIN_ALTITUDE // Minimum altitude
+        ),
+        MAX_ALTITUDE
       ),
     ];
   }
@@ -73,4 +92,4 @@ const getLineLayer = (map, key, trackGeojson) => {
   return layerName;
 };
 
-export { getLinePainter, handleWheelEvent, getLineLayer };
+export { getLinePainter, handleWheelEvent, getLineLayer, altitudeToSpeedup };

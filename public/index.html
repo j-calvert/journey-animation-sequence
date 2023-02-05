@@ -28,6 +28,17 @@
       /* overscroll-behavior-y: none;
       overscroll-behavior: none; */
     }
+    #image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      /* transform: translate(-50%, -50%); 
+      transform: translate(-50% - calc(50% - 250px), -50%);
+      */
+      height: 100%;
+      width: 100%; 
+      pointer-events: none;
+    }
     body {
       margin: 0px;
       padding: 0px;
@@ -53,19 +64,34 @@
       /*setting our background image*/
       background-size: 100%;
     }
-    #date {
+    #date,
+    #other_output,
+    #camera_info {
       position: absolute;
-      top: 7px;
-      left: 80px;
-      width: 250px;
-      height: 35px;
-      /* text-align: center; */
       font-family: Georgia, serif;
       font-size: 12px;
       letter-spacing: 0.4px;
       word-spacing: 2px;
       color: #e0d8d8;
       font-weight: 100;
+    }
+    #date {
+      top: 7px;
+      left: 90px;
+      width: 250px;
+      height: 15px;
+    }
+    #other_output {
+      top: 30px;
+      left: 90px;
+      width: 550px;
+      height: 15px;
+    }
+    #camera_info {
+      top: 50px;
+      left: 90px;
+      width: 650px;
+      height: 35px;
     }
     #hour,
     #minute {
@@ -95,12 +121,15 @@
   <body>
     <div id="fullcontainer" class="viewport-full relative scroll-hidden">
       <div id="map"></div>
+      <div id="image"></div>
       <div id="datetime">
         <div id="clock">
           <div id="hour"></div>
           <div id="minute"></div>
         </div>
         <div id="date"></div>
+        <div id="other_output"></div>
+        <div id="camera_info"></div>
       </div>
     </div>
   </body>
