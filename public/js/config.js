@@ -1,4 +1,4 @@
-const DEBUG_INFO = true;
+const DEBUG_INFO = false;
 const MAX_SPEEDUP = 76000;
 const MIN_SPEEDUP = 60;
 const ALT_TO_SPEEDUP_FACTOR = 30;

@@ -12,4 +12,4 @@ Following https://code.visualstudio.com/docs/python/python-tutorial create virtu
 
 Run from within VSCode, outputs a file in the hardcoded directory where the images are provided, or
 
-`python3 dirToGeoJSON.py {name}`, where name should be a subdirectory of {PROJECT_HOME}/local/photos, for now .gitignored (because doing everything locally)
+`python3 ./dirToGeoJSON.py {name}`, where name should be a subdirectory of {PROJECT_HOME}/local/photos, for now .gitignored (because doing everything locally)

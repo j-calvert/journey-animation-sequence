@@ -40,8 +40,11 @@ const animateImage = async ({
     1100
   );
   camera.position.z = 0.01;
-
+  camera.zoom = 0.5;
+  camera.updateProjectionMatrix();
   const controls = new OrbitControls(camera, renderer.domElement);
+  console.log(`controls: ${JSON.stringify(controls)}`);
+  controls.zoom = 0.5;
   let spherical = new Spherical();
   const map_camera = map.getFreeCameraOptions();
 
@@ -58,6 +61,8 @@ const animateImage = async ({
   map.on('move', function () {
     spherical.theta = -map.getBearing() / 57.29; // This works well
     spherical.phi = (map.getPitch() + 20) / 57.29;
+
+    console.log(`spherical: ${JSON.stringify(spherical)}`);
     controls.object.position.setFromSpherical(spherical);
     controls.update();
     // renderer.setSize(PANO_ASPECT_RATIO * pano_height, pano_height);
