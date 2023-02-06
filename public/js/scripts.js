@@ -12,7 +12,7 @@ let tour = tourQueryParam ?? 'mexico_spring_2022';
 // Ref: https://account.mapbox.com/access-tokens
 // pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg is public access token
 mapboxgl.accessToken =
-  'pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGdhdm5xdTB2bWYzcHI4NjBscHRjNm4ifQ.6EXLPhiiPXuEyyYvvNj4wQ';
+  'pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg';
 
 /**
  * @type {Types.CameraLocation}

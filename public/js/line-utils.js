@@ -81,7 +81,7 @@ const getLineLayer = (map, key, trackGeojson) => {
     source: sourceName,
     paint: {
       'line-color': 'rgba(0,0,0,0)',
-      'line-width': 9,
+      'line-width': 5,
       'line-opacity': 0.8,
     },
     layout: {

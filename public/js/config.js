@@ -1,8 +1,8 @@
-const DEBUG_INFO = false;
+const DEBUG_INFO = true;
 const MAX_SPEEDUP = 76000;
 const MIN_SPEEDUP = 60;
 const ALT_TO_SPEEDUP_FACTOR = 30;
-const MIN_ALTITUDE = 3000;
+const MIN_ALTITUDE = 2000;
 const MAX_ALTITUDE = 5000000;
 
 export {

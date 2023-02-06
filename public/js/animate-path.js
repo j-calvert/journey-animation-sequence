@@ -17,6 +17,7 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
   let bearing = clocation.bearing;
   let altitude = clocation.altitude;
   let pitch = clocation.pitch;
+  let path_altitude = 0;
 
   let curSpeedup = altitudeToSpeedup(altitude);
 
@@ -27,7 +28,7 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
       bearing,
       altitude
     );
-    curSpeedup = altitudeToSpeedup(altitude);
+    curSpeedup = altitudeToSpeedup(altitude - path_altitude);
     lastUi = prevTime;
   }
   // Desktop Camera controls
@@ -121,6 +122,7 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
           return;
         }
         const p = turf.nearestPointOnLine(path, path.geometry.coordinates[i]);
+        path_altitude = p.geometry.coordinates[2];
         const animationPhase = p.properties.location / pathDistance;
         const debugInfo = `${i} ${
           Math.round(animationPhase * 10000) / 10000
@@ -129,11 +131,15 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
           luxon.DateTime.fromISO(path.properties.coordTimes[0])
             .setZone('America/Mexico_City')
             .plus({ seconds: unpausedTime }),
-          `i: ${i} Altitude: ${Math.round(altitude)}, Speedup: ${Math.round(
+          `i: ${i} altitude: ${Math.round(altitude)}, curSpeedup: ${Math.round(
             curSpeedup
-          )} point: [${p.geometry.coordinates[0].toFixed(
+          )}, altitude - path_altitude: ${
+            altitude - path_altitude
+          }, point: [${p.geometry.coordinates[0].toFixed(
             3
-          )}, ${p.geometry.coordinates[1].toFixed(3)}]`
+          )}, ${p.geometry.coordinates[1].toFixed(
+            3
+          )}, ${p.geometry.coordinates[2].toFixed(0)}]`
         );
 
         paintLine(animationPhase);

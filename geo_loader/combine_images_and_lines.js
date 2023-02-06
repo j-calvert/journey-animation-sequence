@@ -9,20 +9,12 @@
 //
 // The end result should be a MultiPoint where each point therein has a coorTime that falls
 // in the interval of the corresponding LineString.
-import toGeoJSON from 'togeojson';
 import * as fs from 'fs';
-import distance from 'turf';
 
 import * as turf from '@turf/turf';
-import moment from 'moment-timezone';
 
 function compareStartTimes(a, b) {
   return a.properties.coordTimes[0] - b.properties.coordTimes[0];
-}
-
-function getDate(coordTime, tz) {
-  const date = moment.utc(coordTime).tz(tz);
-  return date.format('YYYY-MM-DD_HH-mm_ss');
 }
 
 async function combine_images_and_lines(tracks_src, images_src, dest_file) {
