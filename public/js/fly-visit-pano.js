@@ -10,11 +10,8 @@ const ZOOM_HOVER = 74;
 const scene = new THREE.Scene();
 const renderer = new THREE.WebGLRenderer();
 const textureLoader = new THREE.TextureLoader();
-async function loadTexture(jpgFilename) {
-  const texture = await new Promise((resolve, reject) => {
-    textureLoader.load(jpgFilename, resolve, undefined, reject);
-  });
-  return texture;
+function loadTexture(jpgFilename) {
+  return textureLoader.load(jpgFilename, () => renderer.render(scene, camera));
 }
 
 const animateImage = async ({
@@ -31,7 +28,10 @@ const animateImage = async ({
   let pitch_locked = true;
   const marker = imagePoint;
 
-  const texture = await loadTexture(
+  // const texture = await loadTexture(
+  //   `data/photos/${marker.properties.img_name}`
+  // );
+  const texture = textureLoader.load(
     `data/photos/${marker.properties.img_name}`
   );
 
@@ -94,7 +94,7 @@ const animateImage = async ({
       lngLat: imagePoint.geometry.coordinates,
       altitude: pathAltitude + ZOOM_HOVER,
     },
-    duration: duration / 5,
+    duration: duration / 10,
     startCorrected: true,
     endCorrected: false,
     setOpacity: (e) => setOpacity(d3.easeExpIn(e)),
@@ -102,6 +102,8 @@ const animateImage = async ({
   });
   setOpacity(1);
   pitch_locked = false;
+  const rand = Math.random();
+  const extent = rand > 0.5 ? 1 : -1;
 
   await rotateAboutPoint({
     duration: (duration * 4) / 5,
@@ -112,6 +114,7 @@ const animateImage = async ({
     renderer,
     scene,
     camera,
+    extent,
   });
   await flyZoomAndRotate({
     map,
@@ -129,9 +132,10 @@ const animateImage = async ({
     },
     startCorrected: false,
     endCorrected: true,
-    duration: duration / 5,
+    duration: duration / 10,
     setOpacity: (e) => setOpacity(d3.easeExpIn(1 - e)),
   });
+
   el.removeChild(renderer.domElement);
   // el.remove();
 };

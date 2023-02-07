@@ -2,7 +2,7 @@ import flyZoomAndRotate from './fly-zoom-and-rotate.js';
 import animatePath from './animate-path.js';
 import { getLineLayer, getLinePainter } from './line-utils.js';
 import * as Types from './types.js';
-import { MAPBOX_TOKEN, DEBUG_INFO } from './config.js';
+import { MAPBOX_TOKEN, DEBUG_INFO, SEGMENT_START_ALTITUDE } from './config.js';
 
 const urlSearchParams = new URLSearchParams(window.location.search);
 const { tour: tourQueryParam } = Object.fromEntries(urlSearchParams.entries());
@@ -172,7 +172,7 @@ let clocation = {
           endLocation: {
             ...clocation,
             lngLat: lsLngLat,
-            altitude: 12000,
+            altitude: SEGMENT_START_ALTITUDE,
             bearing: endBearing,
           },
           duration: 10000,

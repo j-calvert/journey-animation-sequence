@@ -12,6 +12,8 @@ const rotateAboutPoint = async ({
   renderer,
   scene,
   camera,
+  // Extent, e.g. a random distributed evenly between the union of the intervals [-1, -.5] and [.5, 1] (avoid seasickness)
+  extent,
 }) => {
   /**
    * @type {Types.CameraLocation}
@@ -35,7 +37,7 @@ const rotateAboutPoint = async ({
         return;
       }
       spherical.theta =
-        (-bearing - 360 * d3.easeCubicInOut(animationPhase)) / 57.29;
+        (-bearing - extent * 360 * d3.easeCubicInOut(animationPhase)) / 57.29;
       spherical.phi =
         (pitch + (90 - pitch) * roundedStep(animationPhase)) / 57.29;
       controls.object.position.setFromSpherical(spherical);

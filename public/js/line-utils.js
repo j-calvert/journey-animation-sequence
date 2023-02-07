@@ -1,5 +1,4 @@
 import {
-  DEBUG_INFO,
   MAX_ALTITUDE,
   MAX_SPEEDUP,
   MIN_ALTITUDE,

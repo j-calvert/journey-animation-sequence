@@ -1,9 +1,18 @@
 const DEBUG_INFO = false;
-const MAX_SPEEDUP = 76000;
+const MAX_SPEEDUP = 3600;
 const MIN_SPEEDUP = 60;
-const ALT_TO_SPEEDUP_FACTOR = 30;
-const MIN_ALTITUDE = 2000;
+const ALT_TO_SPEEDUP_FACTOR = 10;
+const IMAGE_ANIMATION_DURATION_MAX = 20000;
+const IMAGE_ANIMATION_DURATION_MIN = 5000;
+const MIN_ALTITUDE = 1800;
 const MAX_ALTITUDE = 5000000;
+const SEGMENT_START_ALTITUDE = 5000;
+
+const speedupToImageDuration = (speedup) =>
+  IMAGE_ANIMATION_DURATION_MAX -
+  ((IMAGE_ANIMATION_DURATION_MAX - IMAGE_ANIMATION_DURATION_MIN) *
+    (speedup - MIN_SPEEDUP)) /
+    (MAX_SPEEDUP - MIN_SPEEDUP);
 // Ref: https://account.mapbox.com/access-tokens
 // pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg is public access token
 const MAPBOX_TOKEN =
@@ -16,4 +25,6 @@ export {
   MIN_SPEEDUP,
   ALT_TO_SPEEDUP_FACTOR,
   MAPBOX_TOKEN,
+  SEGMENT_START_ALTITUDE,
+  speedupToImageDuration,
 };
