@@ -1,7 +1,18 @@
 import { moveCamera, cubicInterpLocation } from './camera-utils.js';
+import { roundedStep } from './util.js';
 import * as Types from './types.js';
+import { Data3DTexture, DstAlphaFactor } from './three.module.js';
 
-const rotateAboutPoint = async ({ map, location, duration }) => {
+const rotateAboutPoint = async ({
+  bearing,
+  duration,
+  pitch,
+  spherical,
+  controls,
+  renderer,
+  scene,
+  camera,
+}) => {
   /**
    * @type {Types.CameraLocation}
    */
@@ -20,22 +31,16 @@ const rotateAboutPoint = async ({ map, location, duration }) => {
       // because the phase calculation is imprecise, the final zoom can vary
       // if it ended up greater than 1, set it to 1 so that we get the exact endAltitude that was requested
       if (animationPhase >= 1) {
-        moveCamera({
-          map,
-          location,
-          corrected: false,
-        });
-        resolve(location);
+        resolve();
         return;
       }
-      moveCamera({
-        map,
-        location: {
-          ...location,
-          bearing: location.bearing + 360 * d3.easeCubicInOut(animationPhase),
-        },
-        corrected: false,
-      });
+      spherical.theta =
+        (-bearing - 360 * d3.easeCubicInOut(animationPhase)) / 57.29;
+      spherical.phi =
+        (pitch + (90 - pitch) * roundedStep(animationPhase)) / 57.29;
+      controls.object.position.setFromSpherical(spherical);
+      controls.update();
+      renderer.render(scene, camera);
       await window.requestAnimationFrame(frame);
     };
     await window.requestAnimationFrame(frame);

@@ -96,6 +96,7 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
             animateUIOff();
             prevTime = undefined;
             wasPaused = true;
+            isPaused = true;
             await animateImage({
               imagePoint,
               map,
@@ -106,6 +107,7 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
               duration: 20000,
             });
             animateUIOn();
+            isPaused = false;
           }
         }
         if (i >= path.coordDurations.length) {
@@ -146,9 +148,7 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
         } else {
           document.getElementById(
             'other_output'
-          ).innerText = `Speedup proportional to zoom level.  Current speedup: ${Math.round(
-            curSpeedup
-          )}x`;
+          ).innerText = `Current speedup: ${Math.round(curSpeedup)}x`;
         }
 
         const debugInfo = `${i} ${

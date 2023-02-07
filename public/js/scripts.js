@@ -2,17 +2,14 @@ import flyZoomAndRotate from './fly-zoom-and-rotate.js';
 import animatePath from './animate-path.js';
 import { getLineLayer, getLinePainter } from './line-utils.js';
 import * as Types from './types.js';
-import { DEBUG_INFO } from './config.js';
+import { MAPBOX_TOKEN, DEBUG_INFO } from './config.js';
 
 const urlSearchParams = new URLSearchParams(window.location.search);
 const { tour: tourQueryParam } = Object.fromEntries(urlSearchParams.entries());
 
 let tour = tourQueryParam ?? 'mexico_spring_2022';
 
-// Ref: https://account.mapbox.com/access-tokens
-// pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg is public access token
-mapboxgl.accessToken =
-  'pk.eyJ1Ijoiai1jYWx2ZXJ0IiwiYSI6ImNsZGc5aTFwdjBldXUzcG8wb2p6ZmJtajAifQ.I8Aa-UpyjSB1JzRpMXZhKg';
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 /**
  * @type {Types.CameraLocation}
@@ -91,7 +88,10 @@ let clocation = {
     },
     pitch: clocation.pitch,
     bearing: clocation.bearing,
+    tileSize: 32,
   });
+
+  map.tileSize = 64;
 
   map.addControl(
     new mapboxgl.FullscreenControl({
@@ -139,7 +139,7 @@ let clocation = {
       },
     });
 
-    // Add terrain source, with slight exaggeration
+    // Add terrain source, with no exaggeration
     map.addSource('mapbox-dem', {
       type: 'raster-dem',
       url: 'mapbox://mapbox.terrain-rgb',

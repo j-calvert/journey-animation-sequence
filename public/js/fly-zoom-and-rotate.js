@@ -13,6 +13,7 @@ const flyZoomAndRotate = async ({
   startCorrected = true,
   endCorrected = true,
   setOpacity,
+  setPanoPitch,
 }) => {
   /**
    * @type {Types.CameraLocation}
@@ -38,6 +39,9 @@ const flyZoomAndRotate = async ({
 
       if (setOpacity) {
         setOpacity(animationPhase);
+      }
+      if (setPanoPitch) {
+        setPanoPitch(animationPhase);
       }
 
       moveCamera({

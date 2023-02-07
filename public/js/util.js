@@ -1,5 +1,15 @@
 import toGeoJSON from './togeojson.js';
 
+const SHOULDER = 0.1;
+const roundedStep = (animationPhase) => {
+  return animationPhase < SHOULDER
+    ? d3.easeSinInOut(animationPhase / SHOULDER)
+    : animationPhase > 1 - SHOULDER
+    ? d3.easeSinInOut((1 - animationPhase) / SHOULDER)
+    : animationPhase >= 1
+    ? 0
+    : 1;
+};
 const createGeoJSONCircle = (center, radiusInKm, points = 64) => {
   const coords = {
     latitude: center[1],
@@ -65,4 +75,4 @@ const getGeoJson = async (src) => {
   return trackGeojson;
 };
 
-export { createGeoJSONCircle, getGeoJson };
+export { createGeoJSONCircle, getGeoJson, roundedStep };
