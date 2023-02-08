@@ -20,7 +20,7 @@ const getLinePainter = (map, layerName) => {
       'yellow',
       Math.max(0.0002, animationPhase),
       'blue',
-      animationPhase + 0.01,
+      animationPhase + 0.0003,
       'rgba(0, 0, 0, 0)',
     ]);
   };

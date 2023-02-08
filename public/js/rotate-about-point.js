@@ -3,6 +3,8 @@ import { roundedStep } from './util.js';
 import * as Types from './types.js';
 import { Data3DTexture, DstAlphaFactor } from './three.module.js';
 
+const easeRotate = d3.easePoly.exponent(1.5);
+
 const rotateAboutPoint = async ({
   bearing,
   duration,
@@ -37,7 +39,7 @@ const rotateAboutPoint = async ({
         return;
       }
       spherical.theta =
-        (-bearing - extent * 360 * d3.easeCubicInOut(animationPhase)) / 57.29;
+        (-bearing - extent * 360 * easeRotate(animationPhase)) / 57.29;
       spherical.phi =
         (pitch + (90 - pitch) * roundedStep(animationPhase)) / 57.29;
       controls.object.position.setFromSpherical(spherical);

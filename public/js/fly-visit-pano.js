@@ -23,9 +23,6 @@ const animateImage = async ({
   pathAltitude,
   duration,
 }) => {
-  const DIVE_PITCH = pitch;
-
-  let pitch_locked = true;
   const marker = imagePoint;
 
   // const texture = await loadTexture(
@@ -92,7 +89,7 @@ const animateImage = async ({
       pitch: pitch,
       bearing: bearing,
       lngLat: imagePoint.geometry.coordinates,
-      altitude: pathAltitude + ZOOM_HOVER,
+      altitude: pathAltitude,
     },
     duration: duration / 10,
     startCorrected: true,
@@ -101,7 +98,6 @@ const animateImage = async ({
     setPanoPitch: (e) => setPanoPitch(d3.easeExpIn(e)),
   });
   setOpacity(1);
-  pitch_locked = false;
   const rand = Math.random();
   const extent = rand > 0.5 ? 1 : -1;
 
@@ -119,9 +115,9 @@ const animateImage = async ({
   await flyZoomAndRotate({
     map,
     startLocation: {
-      pitch: DIVE_PITCH,
+      pitch,
       bearing,
-      altitude: pathAltitude + ZOOM_HOVER,
+      altitude: pathAltitude,
       lngLat: imagePoint.geometry.coordinates,
     },
     endLocation: {
