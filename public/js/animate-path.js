@@ -1,7 +1,10 @@
-import { handleWheelEvent, altitudeToSpeedup } from './line-utils.js';
+import {
+  handleWheelEvent,
+  altitudeToSpeedup,
+  preloadImages,
+} from './line-utils.js';
 import { updateClock } from './clock-utils.js';
 import { moveCamera } from './camera-utils.js';
-import { createImageMarker } from './fly-visit-image-marker.js';
 import { animateImage } from './fly-visit-pano.js';
 import { DEBUG_INFO, speedupToImageDuration } from './config.js';
 const UX_DEBOUNCE = 1500;
@@ -19,6 +22,8 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
   let altitude = clocation.altitude;
   let pitch = clocation.pitch;
   let path_altitude = path.geometry.coordinates[0][2];
+
+  preloadImages(path.picPoints);
 
   let curSpeedup = altitudeToSpeedup(altitude - path_altitude);
 

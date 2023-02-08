@@ -91,4 +91,20 @@ const getLineLayer = (map, key, trackGeojson) => {
   return layerName;
 };
 
-export { getLinePainter, handleWheelEvent, getLineLayer, altitudeToSpeedup };
+const preloadImages = (picPoints) => {
+  const ppArray = Object.values(picPoints);
+  ppArray.map((p) => {
+    if (p) {
+      const img = new Image();
+      img.src = `data/photos/${p.properties.img_name}`;
+    }
+  });
+};
+
+export {
+  preloadImages,
+  getLinePainter,
+  handleWheelEvent,
+  getLineLayer,
+  altitudeToSpeedup,
+};
