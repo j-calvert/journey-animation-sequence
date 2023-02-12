@@ -19,29 +19,39 @@ function compareStartTimes(a, b) {
 
 async function combine_images_and_lines(tracks_src, images_src, dest_file) {
   const tracks = JSON.parse(fs.readFileSync(tracks_src, 'utf8'));
-  const images = JSON.parse(fs.readFileSync(images_src, 'utf8'));
-  // For each image
-  const enhancedImageFeatures = images.features.map((image) => {
-    // Get closest track
-    const closestTrack = tracks.features.reduce((prev, curr) => {
-      return turf.pointToLineDistance(image, prev) <
-        turf.pointToLineDistance(image, curr)
-        ? prev
-        : curr;
+  try {
+    const images = JSON.parse(fs.readFileSync(images_src, 'utf8'));
+    // For each image
+    const enhancedImageFeatures = images.features.map((image) => {
+      // Get closest track
+      const closestTrack = tracks.features.reduce((prev, curr) => {
+        return turf.pointToLineDistance(image, prev) <
+          turf.pointToLineDistance(image, curr)
+          ? prev
+          : curr;
+      });
+      const closesPoint = turf.nearestPointOnLine(closestTrack, image);
+      return {
+        ...image,
+        properties: {
+          ...image.properties,
+          nearestLineKey: closestTrack.properties.key,
+          nearestLinePointLocation: closesPoint.properties.location,
+          nearestLinePointIndex: closesPoint.properties.index,
+        },
+      };
     });
-    const closesPoint = turf.nearestPointOnLine(closestTrack, image);
-    return {
-      ...image,
-      properties: {
-        ...image.properties,
-        nearestLineKey: closestTrack.properties.key,
-        nearestLinePointLocation: closesPoint.properties.location,
-        nearestLinePointIndex: closesPoint.properties.index,
-      },
-    };
-  });
 
-  tracks.features = [...tracks.features, ...enhancedImageFeatures];
+    tracks.features = [...tracks.features, ...enhancedImageFeatures];
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.log(
+        `Couldn't find image file ${images_src}, creating image-less tour.`
+      );
+    } else {
+      throw err;
+    }
+  }
   fs.writeFileSync(dest_file, JSON.stringify(tracks));
 }
 

@@ -20,6 +20,7 @@ let clocation = {
   lngLat: [-122.3321, 47.6062],
   altitude: 4000000,
 };
+let leTime = 0;
 
 // Wrapping EVERYTHING in an IIFE (Immediately Invoked Function Expression)
 // so we can block waiting on the first GeoJson load and get the coorect
@@ -86,12 +87,13 @@ let clocation = {
       lng: lineStrings[0].geometry.coordinates[0][0],
       lat: lineStrings[0].geometry.coordinates[0][1],
     },
+    light: { anchor: 'map', color: 'white', intensity: 0.001 },
     pitch: clocation.pitch,
     bearing: clocation.bearing,
-    tileSize: 32,
+    tileSize: 512,
   });
 
-  map.tileSize = 64;
+  // map.tileSize = 64;
 
   map.addControl(
     new mapboxgl.FullscreenControl({
@@ -159,12 +161,12 @@ let clocation = {
       const coordinates = trackGeojson.geometry.coordinates;
       const lsLngLat = [coordinates[0][0], coordinates[0][1]];
       if (turf.distance(lsLngLat, clocation.lngLat) > 100) {
-        const esLngLat = [
+        const leLngLat = [
           coordinates[coordinates.length - 1][0],
           coordinates[coordinates.length - 1][1],
         ];
 
-        const endBearing = turf.bearing(lsLngLat, esLngLat);
+        const endBearing = turf.bearing(lsLngLat, leLngLat);
 
         clocation = await flyZoomAndRotate({
           map,
@@ -175,9 +177,10 @@ let clocation = {
             altitude: SEGMENT_START_ALTITUDE,
             bearing: endBearing,
           },
-          duration: 10000,
+          duration: 5000,
         });
       }
+      const lsTime = trackGeojson.properties.coordTimes;
       clocation = await animatePath({
         map,
         path: trackGeojson,
