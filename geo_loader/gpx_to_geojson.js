@@ -3,17 +3,11 @@
 import * as fs from 'fs';
 import * as xmldom from 'xmldom';
 import toGeoJSON from 'togeojson';
-import moment from 'moment-timezone';
 import * as luxon from 'luxon';
 import * as turf from '@turf/turf';
 
-function compareStartTimes(a, b) {
-  return a.properties.coordTimes[0] - b.properties.coordTimes[0];
-}
-
 function getDate(coordTime, tz) {
-  const date = moment.utc(coordTime).tz(tz);
-  return date.format('YYYY-MM-DD_HH-mm_ss');
+  return luxon.DateTime.fromISO(coordTime).toFormat('YYYY-MM-DD_HH-mm_ss');
 }
 
 function enhanceLineStringFeatures(linestring) {
@@ -34,10 +28,10 @@ function enhanceLineStringFeatures(linestring) {
       ).seconds,
       distance: turf.length(linestring, { units: 'kilometers' }),
       coordDurations: linestring.properties.coordTimes.map(
-        (cd) =>
+        (coordTime) =>
           luxon.Interval.fromDateTimes(
             start_time,
-            luxon.DateTime.fromISO(cd)
+            luxon.DateTime.fromISO(coordTime)
           ).toDuration('seconds').seconds
       ),
     },
@@ -66,7 +60,7 @@ function fileToLineStrings(src_dir, timezone, dest_file) {
       //   `Feature ${feature} w/ feature.geometry.type = ${feature.geometry.type}`
       // );
       if (feature.geometry.type === 'LineString') {
-        const key = getDate(feature.properties.coordTimes[0], timezone);
+        const key = feature.properties.coordTimes[0];
         // console.log(`key ${key}`);
         if (key in linestrings) {
           throw Error(
@@ -76,6 +70,7 @@ function fileToLineStrings(src_dir, timezone, dest_file) {
         console.log(`Adding key ${key} to linestrings from file ${filename}`);
         feature.properties.sourceFile = filename;
         feature.properties.key = key;
+        feature.properties.timezone = timezone;
         linestrings[key] = feature;
         // console.log(
         //   `linestrings for ${key} linestrings[key].length: ${linestrings[key].length}`
@@ -93,6 +88,7 @@ function fileToLineStrings(src_dir, timezone, dest_file) {
             type: 'Feature',
             properties: {
               key,
+              timezone,
               name: feature.properties.name,
               sourceFile: filename,
               coordTimes: feature.properties.coordTimes[i],

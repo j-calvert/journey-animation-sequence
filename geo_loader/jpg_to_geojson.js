@@ -8,14 +8,10 @@ function compareStartTimes(a, b) {
   return a.properties.coordTimes[0] - b.properties.coordTimes[0];
 }
 
-function getDate(coordTime, tz) {
-  const date = moment.utc(coordTime).tz(tz);
-  return date.format('YYYY-MM-DD_HH-mm_ss');
-}
-
 function featureFromImage(filename, exifData, timezone) {
   const tags = exifData.tags;
-  const img_type = tags.Make.includes('360') ? 'PANO' : 'FLAT';
+  // console.log(JSON.stringify(tags));
+  const img_type = tags.Make && tags.Make.includes('360') ? 'PANO' : 'FLAT';
   // Exif timestamps are seconds per epoch *in local timezone*, not UCT.  So dum.
   // So we hope we know the correct timezone... (we only use this downstream to fill in missing
   // GPS data)
@@ -76,8 +72,8 @@ function fileToPoints(src_dir, dest_file, timezone) {
 
 console.log(process.argv);
 //https://kevinnovak.github.io/Time-Zone-Picker/ is useful for timezone arg
-const name = process.argv[2] ?? 'mexico_spring_2022';
-const timezone = process.argv[3] ?? 'America/Mexico_City';
+const name = process.argv[2] ?? 'sweden_norway_2022';
+const timezone = process.argv[3] ?? 'Europe/Stockholm';
 
 const home = '/Users/jcalvert/journey-animation-sequence';
 

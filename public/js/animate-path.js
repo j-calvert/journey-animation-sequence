@@ -97,7 +97,7 @@ const animatePath = async ({ map, path, points, clocation, paintLine }) => {
               )}`
             );
 
-            animateUIOff();
+            // animateUIOff();
             isPaused = true;
             prevTime = undefined;
             wasPaused = true;
@@ -121,7 +121,7 @@ const animatePath = async ({ map, path, points, clocation, paintLine }) => {
                 `Unknown image type: ${points[i].properties.img_type}.  Ignoring`
               );
             }
-            animateUIOn();
+            // animateUIOn();
             isPaused = false;
           }
         }
@@ -170,29 +170,29 @@ const animatePath = async ({ map, path, points, clocation, paintLine }) => {
 
         updateClock(
           luxon.DateTime.fromISO(path.properties.coordTimes[0])
-            .setZone('America/Mexico_City')
+            .setZone(path.properties.timezone)
             .plus({ seconds: unpausedTime })
         );
 
         paintLine(animationPhase);
-        if (!isPaused) {
-          moveCamera({
-            map,
-            location: {
-              pitch,
-              bearing,
-              lngLat: [
-                path.geometry.coordinates[i][0],
-                path.geometry.coordinates[i][1],
-              ],
-              altitude,
-            },
-            smooth: true,
-          });
-          if (!wasPaused) {
-            prevTime = currentTime;
-          }
+        // if (!isPaused) {
+        moveCamera({
+          map,
+          location: {
+            pitch,
+            bearing,
+            lngLat: [
+              path.geometry.coordinates[i][0],
+              path.geometry.coordinates[i][1],
+            ],
+            altitude,
+          },
+          smooth: true,
+        });
+        if (!wasPaused) {
+          prevTime = currentTime;
         }
+        // }
       }
 
       await window.requestAnimationFrame(frame);

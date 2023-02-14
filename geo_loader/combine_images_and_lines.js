@@ -13,18 +13,12 @@ import * as fs from 'fs';
 import * as luxon from 'luxon';
 
 import * as turf from '@turf/turf';
-import moment from 'moment-timezone';
 
 function compareStartTimes(a, b) {
   return a.properties.coordTimes[0] - b.properties.coordTimes[0];
 }
 
-async function combine_images_and_lines(
-  tracks_src,
-  images_src,
-  dest_file,
-  timezone
-) {
+async function combine_images_and_lines(tracks_src, images_src, dest_file) {
   const tracks = JSON.parse(fs.readFileSync(tracks_src, 'utf8'));
   try {
     const images = JSON.parse(fs.readFileSync(images_src, 'utf8'));
@@ -41,18 +35,19 @@ async function combine_images_and_lines(
           });
           const closesPoint = turf.nearestPointOnLine(closestTrack, image);
           if (image.properties.timestamp) {
-            const pointTimestamp = moment
-              .utc(
-                closestTrack.properties.coordTimes[closesPoint.properties.index]
-              )
-              .unix();
+            const pointTimestamp = luxon.DateTime.fromISO(
+              closestTrack.properties.coordTimes[closesPoint.properties.index]
+            ).toUnixInteger();
             const imageTimestamp = image.properties.timestamp;
             console.log(
-              `Found point with timestamp ${pointTimestamp} for image ${
+              `Found point based on coordinate, distance ${turf.pointToLineDistance(
+                image,
+                closestTrack
+              )} with timestamp ${pointTimestamp} for image ${
                 image.properties.img_name
               } with timestamp ${imageTimestamp}, a difference of ${
-                (pointTimestamp - imageTimestamp) / 3600
-              } hours`
+                (pointTimestamp - imageTimestamp) / 60
+              } minutes`
             );
           }
           return {
@@ -83,9 +78,7 @@ async function combine_images_and_lines(
             const closestTrack = enclosingTracks[0];
             const dur = luxon.Interval.fromDateTimes(
               luxon.DateTime.fromISO(closestTrack.properties.coordTimes[0]),
-              luxon.DateTime.fromSeconds(image.properties.timestamp, {
-                zone: timezone,
-              })
+              luxon.DateTime.fromSeconds(image.properties.timestamp)
             ).toDuration('seconds').seconds;
             let idx = 0;
             while (closestTrack.properties.coordDurations[idx] < dur) {
@@ -148,7 +141,6 @@ async function combine_images_and_lines(
 }
 
 const name = process.argv[2] ?? 'mexico_spring_2022';
-const timezone = process.argv[3] ?? 'America/Mexico_City';
 
 const home = '/Users/jcalvert/journey-animation-sequence';
 
@@ -159,4 +151,4 @@ const photo_src_dir = `${home}/local/photos/${name}`;
 const photo_dst_dir = `${home}/public/data/photos`;
 
 // tour is the public output and the end of the local preprocessing road.
-combine_images_and_lines(tracks_file, images_file, tour_file, timezone);
+combine_images_and_lines(tracks_file, images_file, tour_file);
