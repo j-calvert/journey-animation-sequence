@@ -5,12 +5,13 @@ import {
 } from './line-utils.js';
 import { updateClock } from './clock-utils.js';
 import { moveCamera } from './camera-utils.js';
-import { animateImage } from './fly-visit-pano.js';
+import { visitPano } from './fly-visit-pano.js';
+import { visitImage } from './fly-visit-image.js';
 import { DEBUG_INFO, speedupToImageDuration } from './config.js';
 const UX_DEBOUNCE = 1500;
 const round = (f, pot) => Math.round(f * pot) / pot;
 
-const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
+const animatePath = async ({ map, path, points, clocation, paintLine }) => {
   let startTime,
     prevTime,
     i = 0;
@@ -23,7 +24,7 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
   let pitch = clocation.pitch;
   let path_altitude = path.geometry.coordinates[0][2];
 
-  preloadImages(path.picPoints);
+  preloadImages(points);
 
   let curSpeedup = altitudeToSpeedup(altitude - path_altitude);
 
@@ -70,6 +71,7 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
 
   return new Promise(async (resolve) => {
     const pathDistance = turf.lineDistance(path);
+    const coordDurations = path.properties.coordDurations;
     const frame = async (currentTime) => {
       let wasPaused = false;
       if (!prevTime) prevTime = currentTime;
@@ -81,15 +83,12 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
           // bearing adjustment
           bearing += (currentTime - prevTime) / 5 / 57;
         }
-        // createImageMarker(path.picPoints[1793], map);
-        while (
-          unpausedTime > path.coordDurations[i] &&
-          i < path.coordDurations.length
-        ) {
+        // createImageMarker(points[1793], map);
+        while (unpausedTime > coordDurations[i] && i < coordDurations.length) {
           i++;
-          if (path.picPoints[i]) {
+          if (points[i]) {
             const pathAltitude = path.geometry.coordinates[i][2];
-            const imagePoint = path.picPoints[i];
+            const imagePoint = points[i];
             console.log(
               `Imagepoint ${JSON.stringify(
                 imagePoint
@@ -102,29 +101,39 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
             isPaused = true;
             prevTime = undefined;
             wasPaused = true;
-
-            await animateImage({
-              imagePoint,
-              map,
-              pitch,
-              bearing,
-              altitude,
-              pathAltitude,
-              duration: speedupToImageDuration(curSpeedup),
-            });
+            if (imagePoint.properties.img_type == 'PANO') {
+              await visitPano({
+                imagePoint,
+                map,
+                pitch,
+                bearing,
+                altitude,
+                pathAltitude,
+                duration: speedupToImageDuration(curSpeedup),
+              });
+            } else if (imagePoint.properties.img_type == 'FLAT') {
+              await visitImage({
+                imagePoint,
+                duration: speedupToImageDuration(curSpeedup),
+              });
+            } else {
+              console.log(
+                `Unknown image type: ${points[i].properties.img_type}.  Ignoring`
+              );
+            }
             animateUIOn();
             isPaused = false;
           }
         }
-        if (i >= path.coordDurations.length) {
+        if (i >= coordDurations.length) {
           // EXIT
           animateUIOff();
           resolve({
             pitch,
             bearing,
             lngLat: [
-              path.geometry.coordinates[path.coordDurations.length - 1][0],
-              path.geometry.coordinates[path.coordDurations.length - 1][1],
+              path.geometry.coordinates[coordDurations.length - 1][0],
+              path.geometry.coordinates[coordDurations.length - 1][1],
             ],
             altitude,
           });
@@ -144,8 +153,8 @@ const animatePath = async ({ map, speedup, path, clocation, paintLine }) => {
             altitude.toFixed(0)
           )}, curSpeedup: ${Math.round(
             curSpeedup.toFixed(0)
-          )}, unpausedTime - path.coordDurations[i]: ${(
-            unpausedTime - path.coordDurations[i]
+          )}, unpausedTime - coordDurations[i]: ${(
+            unpausedTime - coordDurations[i]
           ).toFixed(2)}, altitude - path_altitude: ${(
             altitude - path_altitude
           ).toFixed(0)}, point: [${p.geometry.coordinates[0].toFixed(

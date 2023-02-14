@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as xmldom from 'xmldom';
 import toGeoJSON from 'togeojson';
 import moment from 'moment-timezone';
+import * as luxon from 'luxon';
+import * as turf from '@turf/turf';
 
 function compareStartTimes(a, b) {
   return a.properties.coordTimes[0] - b.properties.coordTimes[0];
@@ -12,6 +14,34 @@ function compareStartTimes(a, b) {
 function getDate(coordTime, tz) {
   const date = moment.utc(coordTime).tz(tz);
   return date.format('YYYY-MM-DD_HH-mm_ss');
+}
+
+function enhanceLineStringFeatures(linestring) {
+  const start_time = luxon.DateTime.fromISO(
+    linestring.properties.coordTimes[0]
+  );
+  const end_time = luxon.DateTime.fromISO(
+    linestring.properties.coordTimes[
+      linestring.properties.coordTimes.length - 1
+    ]
+  );
+  return {
+    ...linestring,
+    properties: {
+      ...linestring.properties,
+      duration: luxon.Interval.fromDateTimes(start_time, end_time).toDuration(
+        'seconds'
+      ).seconds,
+      distance: turf.length(linestring, { units: 'kilometers' }),
+      coordDurations: linestring.properties.coordTimes.map(
+        (cd) =>
+          luxon.Interval.fromDateTimes(
+            start_time,
+            luxon.DateTime.fromISO(cd)
+          ).toDuration('seconds').seconds
+      ),
+    },
+  };
 }
 
 function fileToLineStrings(src_dir, timezone, dest_file) {
@@ -91,7 +121,7 @@ function fileToLineStrings(src_dir, timezone, dest_file) {
   const geoJson = {
     type: 'FeatureCollection',
     properties: { timezone },
-    features: keys.map((key) => linestrings[key]),
+    features: keys.map((key) => enhanceLineStringFeatures(linestrings[key])),
   };
 
   fs.writeFileSync(dest_file, JSON.stringify(geoJson));

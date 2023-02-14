@@ -1,8 +1,8 @@
 import * as THREE from './three.module.js';
 import { OrbitControls } from './OrbitControls.js';
 import { Spherical } from './Spherical.js';
-import flyZoomAndRotate from './fly-zoom-and-rotate.js';
 import rotateAboutPoint from './rotate-about-point.js';
+import runActionForDuration from './run-action-for-duration.js';
 
 const PANO_ASPECT_RATIO = 2;
 
@@ -14,7 +14,7 @@ function loadTexture(jpgFilename) {
   return textureLoader.load(jpgFilename, () => renderer.render(scene, camera));
 }
 
-const animateImage = async ({
+const visitPano = async ({
   imagePoint,
   map,
   pitch,
@@ -37,7 +37,7 @@ const animateImage = async ({
 
   renderer.setPixelRatio(window.devicePixelRatio);
   // renderer.setSize(PANO_ASPECT_RATIO * pano_height, pano_height);
-  const el = document.getElementById('image');
+  const el = document.getElementById('pano_image');
 
   const camera = new THREE.PerspectiveCamera(
     60,
@@ -77,25 +77,9 @@ const animateImage = async ({
 
   el.appendChild(renderer.domElement);
 
-  await flyZoomAndRotate({
-    map,
-    startLocation: {
-      pitch,
-      bearing,
-      lngLat: imagePoint.geometry.coordinates,
-      altitude,
-    },
-    endLocation: {
-      pitch: pitch,
-      bearing: bearing,
-      lngLat: imagePoint.geometry.coordinates,
-      altitude: pathAltitude,
-    },
+  await runActionForDuration({
     duration: duration / 10,
-    startCorrected: true,
-    endCorrected: false,
-    setOpacity: (e) => setOpacity(d3.easeExpIn(e)),
-    setPanoPitch: (e) => setPanoPitch(d3.easeExpIn(e)),
+    action: (e) => setOpacity(d3.easeExpIn(e)),
   });
   setOpacity(1);
   const rand = Math.random();
@@ -112,28 +96,13 @@ const animateImage = async ({
     camera,
     extent,
   });
-  await flyZoomAndRotate({
-    map,
-    startLocation: {
-      pitch,
-      bearing,
-      altitude: pathAltitude,
-      lngLat: imagePoint.geometry.coordinates,
-    },
-    endLocation: {
-      pitch,
-      bearing,
-      lngLat: imagePoint.geometry.coordinates,
-      altitude,
-    },
-    startCorrected: false,
-    endCorrected: true,
+  await runActionForDuration({
     duration: duration / 10,
-    setOpacity: (e) => setOpacity(d3.easeExpIn(1 - e)),
+    action: (e) => setOpacity(d3.easeExpIn(1 - e)),
   });
 
   el.removeChild(renderer.domElement);
   // el.remove();
 };
 
-export { animateImage };
+export { visitPano };

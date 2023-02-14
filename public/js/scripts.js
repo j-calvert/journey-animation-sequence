@@ -23,7 +23,7 @@ let clocation = {
 let leTime = 0;
 
 // Wrapping EVERYTHING in an IIFE (Immediately Invoked Function Expression)
-// so we can block waiting on the first GeoJson load and get the coorect
+// so we can block waiting on the first GeoJson load and get the correct
 // coordinate from which to initialize the map
 (async () => {
   const tourGeo = await fetch(`./data/GeoJSON/${tour}.tour.geojson`).then((d) =>
@@ -42,38 +42,11 @@ let leTime = 0;
   } catch (err) {
     console.log(`${err.name}, ${err.message}`);
   }
-  const picPoints = tourGeo.features.filter((f) => f.geometry.type === 'Point');
-
-  const enhancedLineStringFeatures = lineStrings.map((l) => {
-    const start_time = luxon.DateTime.fromISO(l.properties.coordTimes[0]);
-    const end_time = luxon.DateTime.fromISO(
-      l.properties.coordTimes[l.properties.coordTimes.length - 1]
-    );
-    const picPointsOnLine = picPoints
-      .filter((f) => f.properties.nearestLineKey === l.properties.key)
-      .reduce((acc, cur) => {
-        acc[cur.properties.nearestLinePointIndex] = cur;
-        return acc;
-      }, {});
-    return {
-      ...l,
-      duration: luxon.Interval.fromDateTimes(start_time, end_time).toDuration(
-        'seconds'
-      ).seconds,
-      distance: turf.length(l, { units: 'kilometers' }),
-      coordDurations: l.properties.coordTimes.map(
-        (cd) =>
-          luxon.Interval.fromDateTimes(
-            start_time,
-            luxon.DateTime.fromISO(cd)
-          ).toDuration('seconds').seconds
-      ),
-      picPoints: picPointsOnLine,
-    };
-  });
-
-  const [totalTime, totalDistance] = enhancedLineStringFeatures.reduce(
-    (acc, l) => [acc[0] + l.duration, acc[1] + l.distance],
+  const [totalTime, totalDistance] = lineStrings.reduce(
+    (acc, l) => [
+      acc[0] + l.properties.duration,
+      acc[1] + l.properties.distance,
+    ],
     [0, 0]
   );
 
@@ -106,8 +79,17 @@ let leTime = 0;
   map.on('load', async () => {
     // add 3d, sky and fog
     add3D();
-    for (const lineString of enhancedLineStringFeatures) {
-      await playAnimation(lineString);
+    for (const lineString of lineStrings) {
+      const pointsOnLine = tourGeo.features
+        .filter((f) => f.geometry.type === 'Point')
+        .filter(
+          (f) => f.properties.nearestLineKey === lineString.properties.key
+        )
+        .reduce((acc, cur) => {
+          acc[cur.properties.nearestLinePointIndex] = cur;
+          return acc;
+        }, {});
+      await playAnimation(lineString, pointsOnLine);
     }
   });
 
@@ -151,14 +133,14 @@ let leTime = 0;
     map.setTerrain({ source: 'mapbox-dem', exaggeration: 1 });
   };
 
-  const playAnimation = async (trackGeojson) => {
+  const playAnimation = async (lineString, pointsOnLine) => {
     // Assumes we're dealing with a LineString
     return new Promise(async (resolve) => {
-      const key = trackGeojson.properties.key;
-      const layerName = getLineLayer(map, key, trackGeojson);
+      const key = lineString.properties.key;
+      const layerName = getLineLayer(map, key, lineString);
 
       // get the start of the linestring, to be used for animating a zoom-in from high altitude
-      const coordinates = trackGeojson.geometry.coordinates;
+      const coordinates = lineString.geometry.coordinates;
       const lsLngLat = [coordinates[0][0], coordinates[0][1]];
       if (turf.distance(lsLngLat, clocation.lngLat) > 100) {
         const leLngLat = [
@@ -180,10 +162,11 @@ let leTime = 0;
           duration: 5000,
         });
       }
-      const lsTime = trackGeojson.properties.coordTimes;
+      const lsTime = lineString.properties.coordTimes;
       clocation = await animatePath({
         map,
-        path: trackGeojson,
+        path: lineString,
+        points: pointsOnLine,
         clocation,
         paintLine: getLinePainter(map, layerName),
       });

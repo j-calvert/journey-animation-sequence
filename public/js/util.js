@@ -1,6 +1,6 @@
 import toGeoJSON from './togeojson.js';
 
-const SHOULDER = 0.1;
+const SHOULDER = 0.25;
 const roundedStep = (animationPhase) => {
   return animationPhase < SHOULDER
     ? d3.easeSinInOut(animationPhase / SHOULDER)

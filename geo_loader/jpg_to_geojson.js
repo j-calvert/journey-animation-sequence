@@ -1,9 +1,8 @@
 // This makes a LineString per trk, sorts and keys them by
 // start timestamp, then adds them, in order, to a FeatureCollection.
 import * as fs from 'fs';
-import * as xmldom from 'xmldom';
-import toGeoJSON from 'togeojson';
-import moment from 'moment-timezone';
+import * as ExifParser from 'exif-parser';
+import * as luxon from 'luxon';
 
 function compareStartTimes(a, b) {
   return a.properties.coordTimes[0] - b.properties.coordTimes[0];
@@ -14,10 +13,42 @@ function getDate(coordTime, tz) {
   return date.format('YYYY-MM-DD_HH-mm_ss');
 }
 
-function fileToPoint(src_dir, timezone, dest_file) {
+function featureFromImage(filename, exifData, timezone) {
+  const tags = exifData.tags;
+  const img_type = tags.Make.includes('360') ? 'PANO' : 'FLAT';
+  // Exif timestamps are seconds per epoch *in local timezone*, not UCT.  So dum.
+  // So we hope we know the correct timezone... (we only use this downstream to fill in missing
+  // GPS data)
+  // const originalDatetime = luxon.DateTime.fromSeconds(tags.ModifyDate, {
+  //   zone: timezone,
+  // });
+  // const equivalentUTCSeconds = originalDatetime.toUTC().toSeconds();
+  const modifyDate = tags.ModifyDate;
+  const dateTimeWithLocalNotUct = luxon.DateTime.fromSeconds(
+    tags.ModifyDate
+  ).setZone(timezone);
+  const equivalentUTCSeconds =
+    tags.ModifyDate - dateTimeWithLocalNotUct.offset * 60;
+
+  return {
+    type: 'Feature',
+    properties: {
+      img_type,
+      img_name: filename,
+      imageSize: exifData.imageSize,
+      timestamp: equivalentUTCSeconds,
+    },
+    geometry: {
+      type: 'Point',
+      coordinates: [tags.GPSLongitude, tags.GPSLatitude, tags.GPSAltitude],
+    },
+  };
+}
+
+function fileToPoints(src_dir, dest_file, timezone) {
   const files = fs.readdirSync(src_dir);
 
-  let points = {};
+  let points = [];
   files.forEach((filename) => {
     if (!filename.endsWith('.jpg')) {
       console.log(`Ignoring file ${filename} since it doesn't end with .jpg`);
@@ -25,70 +56,18 @@ function fileToPoint(src_dir, timezone, dest_file) {
     }
     const file = `${src_dir}/${filename}`;
     const jpgData = fs.readFileSync(file);
-    const exifData = getExif(jpgData);
+    const exifData = ExifParser.create(jpgData).parse();
 
-    const geoJson = getPointGeoJson(file, exifData);
-    const feature = geoJson.features;
-      // console.log(
-      //   `Feature ${feature} w/ feature.geometry.type = ${feature.geometry.type}`
-      // );
-      if (feature.geometry.type === 'Point') {
-        const key = filename;
-        // console.log(`key ${key}`);
-        if (key in points) {
-          throw Error(
-            `Found duplicate key ${key} in points from file ${filename} and ${points[key].properties.sourceFile}`
-          );
-        }
-        console.log(`Adding key ${key} to points from file ${filename}`);
-        feature.properties.sourceFile = filename;
-        feature.properties.key = key;
-        points[key] = feature;
-        // console.log(
-        //   `points for ${key} points[key].length: ${points[key].length}`
-        // );
-      } else if (feature.geometry.type == 'MultiLineString') {
-        for (let i = 0; i < feature.geometry.coordinates.length; i++) {
-          const key = getDate(feature.properties.coordTimes[i][0], timezone);
-          if (key in points) {
-            throw Error(
-              `Found duplicate key ${key} in points from file ${filename} and ${points[key].properties.sourceFile}`
-            );
-          }
-          console.log(`Adding key ${key} to points from file ${filename}`);
-          points[key] = {
-            type: 'Feature',
-            properties: {
-              key,
-              name: feature.properties.name,
-              sourceFile: filename,
-              coordTimes: feature.properties.coordTimes[i],
-            },
-            geometry: {
-              type: 'LineString',
-              coordinates: feature.geometry.coordinates[i],
-            },
-          };
-          console.log(`points for ${key}`);
-        }
-      } else {
-        console.warn(`Ignoring unknown geometry type ${feature.geometry.type}`);
-      }
-    }
+    const feature = featureFromImage(filename, exifData, timezone);
+    points.push(feature);
   });
 
-  console.log(`Finished reading files.  points.length: ${points}`);
-  // Now we have an array of points per day.
-  // For each day, we want to concatenate the points ordered according to start time
-  // and then serialize into a file for that day.
-
-  const keys = Object.keys(points);
-  keys.sort();
+  console.log(`Finished reading files.  points.length: ${points.length}`);
 
   const geoJson = {
     type: 'FeatureCollection',
     properties: { timezone },
-    features: keys.map((key) => points[key]),
+    features: points,
   };
 
   fs.writeFileSync(dest_file, JSON.stringify(geoJson));
@@ -102,7 +81,7 @@ const timezone = process.argv[3] ?? 'America/Mexico_City';
 
 const home = '/Users/jcalvert/journey-animation-sequence';
 
-const src_dir = `${home}/local/Gpx/${name}`;
-const dest_file = `${home}/local/GeoJSON/${name}.tracks.geojson`;
+const src_dir = `${home}/local/photos/${name}`;
+const dest_file = `${home}/local/GeoJSON/${name}.images.geojson`;
 
-fileTopoints(src_dir, timezone, dest_file);
+fileToPoints(src_dir, dest_file, timezone);

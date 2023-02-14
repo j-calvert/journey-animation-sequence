@@ -28,7 +28,7 @@
       /* overscroll-behavior-y: none;
       overscroll-behavior: none; */
     }
-    #image {
+    #flat_image, #pano_image { /* pano_image by fly-visit-pano.js */
       position: absolute;
       top: 0;
       left: 0;
@@ -36,8 +36,13 @@
       transform: translate(-50% - calc(50% - 250px), -50%);
       */
       height: 100%;
-      width: 100%; 
+      width: 100%;
       pointer-events: none;
+    }
+    #flat_image { /* Used by fly-visit-image.js */
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
     }
     body {
       margin: 0px;
@@ -121,7 +126,8 @@
   <body>
     <div id="fullcontainer" class="viewport-full relative scroll-hidden">
       <div id="map"></div>
-      <div id="image"></div>
+      <div id="flat_image"></div>
+      <div id="pano_image"></div>
       <div id="datetime">
         <div id="clock">
           <div id="hour"></div>
