@@ -6,10 +6,6 @@ import toGeoJSON from 'togeojson';
 import * as luxon from 'luxon';
 import * as turf from '@turf/turf';
 
-function getDate(coordTime, tz) {
-  return luxon.DateTime.fromISO(coordTime).toFormat('YYYY-MM-DD_HH-mm_ss');
-}
-
 function enhanceLineStringFeatures(linestring) {
   const start_time = luxon.DateTime.fromISO(
     linestring.properties.coordTimes[0]
@@ -56,9 +52,6 @@ function fileToLineStrings(src_dir, timezone, dest_file) {
     );
     const geoJson = toGeoJSON.gpx(gpx);
     for (const feature of geoJson.features) {
-      // console.log(
-      //   `Feature ${feature} w/ feature.geometry.type = ${feature.geometry.type}`
-      // );
       if (feature.geometry.type === 'LineString') {
         const key = feature.properties.coordTimes[0];
         // console.log(`key ${key}`);
@@ -77,7 +70,7 @@ function fileToLineStrings(src_dir, timezone, dest_file) {
         // );
       } else if (feature.geometry.type == 'MultiLineString') {
         for (let i = 0; i < feature.geometry.coordinates.length; i++) {
-          const key = getDate(feature.properties.coordTimes[i][0], timezone);
+          const key = feature.properties.coordTimes[i][0];
           if (key in linestrings) {
             throw Error(
               `Found duplicate key ${key} in linestrings from file ${filename} and ${linestrings[key].properties.sourceFile}`

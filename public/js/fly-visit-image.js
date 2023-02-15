@@ -2,7 +2,16 @@ import runActionForDuration from './run-action-for-duration.js';
 
 async function waitForDuration(duration) {
   return new Promise((resolve) => {
+    const keydown = function (event) {
+      if (event.key === 'Escape') {
+        document.removeEventListener('keydown', keydown);
+        resolve();
+      }
+    };
+
+    document.addEventListener('keydown', keydown);
     setTimeout(() => {
+      document.removeEventListener('keydown', keydown);
       resolve();
     }, duration);
   });

@@ -7,7 +7,11 @@ import { updateClock } from './clock-utils.js';
 import { moveCamera } from './camera-utils.js';
 import { visitPano } from './fly-visit-pano.js';
 import { visitImage } from './fly-visit-image.js';
-import { DEBUG_INFO, speedupToImageDuration } from './config.js';
+import {
+  DEBUG_INFO,
+  speedupToImageDuration,
+  SPEEDUP_PIC_CUTOFF,
+} from './config.js';
 const UX_DEBOUNCE = 1500;
 const round = (f, pot) => Math.round(f * pot) / pot;
 
@@ -27,6 +31,7 @@ const animatePath = async ({ map, path, points, clocation, paintLine }) => {
   preloadImages(points);
 
   let curSpeedup = altitudeToSpeedup(altitude - path_altitude);
+  const picturesOff = () => curSpeedup > SPEEDUP_PIC_CUTOFF;
 
   function onWheel(event) {
     [pitch, bearing, altitude] = handleWheelEvent(
@@ -86,7 +91,7 @@ const animatePath = async ({ map, path, points, clocation, paintLine }) => {
         // createImageMarker(points[1793], map);
         while (unpausedTime > coordDurations[i] && i < coordDurations.length) {
           i++;
-          if (points[i]) {
+          if (points[i] && !picturesOff()) {
             const pathAltitude = path.geometry.coordinates[i][2];
             const imagePoint = points[i];
             console.log(
@@ -98,6 +103,8 @@ const animatePath = async ({ map, path, points, clocation, paintLine }) => {
             );
 
             // animateUIOff();
+            map.off('wheel', onWheel);
+
             isPaused = true;
             prevTime = undefined;
             wasPaused = true;
@@ -122,6 +129,7 @@ const animatePath = async ({ map, path, points, clocation, paintLine }) => {
               );
             }
             // animateUIOn();
+            map.on('wheel', onWheel);
             isPaused = false;
           }
         }
@@ -165,7 +173,9 @@ const animatePath = async ({ map, path, points, clocation, paintLine }) => {
         } else {
           document.getElementById(
             'other_output'
-          ).innerText = `Current speedup: ${Math.round(curSpeedup)}x`;
+          ).innerText = `Current speedup: ${Math.round(curSpeedup)}.  ${
+            picturesOff() ? 'Pictures off.' : ''
+          }`;
         }
 
         updateClock(

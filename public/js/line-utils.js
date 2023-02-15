@@ -49,9 +49,9 @@ function altitudeToSpeedup(a) {
 // and altitued (a) based on a wheel event.
 function handleWheelEvent(event, p, b, a) {
   // console.log('A wheel event occurred.');
-  console.log(
-    `${event.originalEvent.deltaX} ${event.originalEvent.deltaY} ${event.originalEvent.deltaZ}`
-  );
+  // console.log(
+  //   `${event.originalEvent.deltaX} ${event.originalEvent.deltaY} ${event.originalEvent.deltaZ}`
+  // );
   if (event.originalEvent.ctrlKey) {
     return [
       Math.min(80, Math.max(20, p + event.originalEvent.deltaY / 57)),

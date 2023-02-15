@@ -31,7 +31,10 @@ node ./combine_images_and_lines.js sweden_norway_2022 Europe/Stockholm
 or just
 
 ```
+./runAll.sh mexico_spring_2022 America/Mexico_City
+./runAll.sh hawaii_2022 Pacific/Honolulu
 ./runAll.sh sweden_norway_2022 Europe/Stockholm
+./runAll.sh mexico_fall_2022 America/Mexico_City
 ```
  
 Second arg is a timezone, for which //https://kevinnovak.github.io/Time-Zone-Picker/ is useful.
