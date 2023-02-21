@@ -14,15 +14,7 @@ function loadTexture(jpgFilename) {
   return textureLoader.load(jpgFilename, () => renderer.render(scene, camera));
 }
 
-const visitPano = async ({
-  imagePoint,
-  map,
-  pitch,
-  bearing,
-  altitude,
-  pathAltitude,
-  duration,
-}) => {
+const visitPano = async ({ imagePoint, map, duration }) => {
   const marker = imagePoint;
 
   // const texture = await loadTexture(
@@ -66,8 +58,8 @@ const visitPano = async ({
   const setPanoPitch = (pano_pitch) => (spherical.phi = 90 * pano_pitch);
   setOpacity(0);
   renderer.setSize(el.offsetWidth, el.offsetHeight);
-  spherical.theta = -bearing / 57.29; // This works well
-  spherical.phi = pitch / 57.29;
+  spherical.theta = -map.getBearing() / 57.29; // This works well
+  spherical.phi = map.getPitch() / 57.29;
 
   controls.object.position.setFromSpherical(spherical);
   controls.update();
@@ -87,8 +79,8 @@ const visitPano = async ({
 
   await rotateAboutPoint({
     duration: (duration * 4) / 5,
-    pitch,
-    bearing,
+    pitch: map.getPitch(),
+    bearing: map.getBearing(),
     spherical,
     controls,
     renderer,

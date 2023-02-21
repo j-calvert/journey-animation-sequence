@@ -1,9 +1,17 @@
-import { moveCamera, cubicInterpLocation } from './camera-utils.js';
-import { roundedStep } from './util.js';
 import * as Types from './types.js';
-import { Data3DTexture, DstAlphaFactor } from './three.module.js';
 
 const easeRotate = d3.easePoly.exponent(1.5);
+
+const SHOULDER = 0.25;
+const roundedStep = (animationPhase) => {
+  return animationPhase < SHOULDER
+    ? d3.easeSinInOut(animationPhase / SHOULDER)
+    : animationPhase > 1 - SHOULDER
+    ? d3.easeSinInOut((1 - animationPhase) / SHOULDER)
+    : animationPhase >= 1
+    ? 0
+    : 1;
+};
 
 const updateControls = ({
   bearing,

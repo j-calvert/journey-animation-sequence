@@ -2,24 +2,40 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Tour de Jeremy</title>
+    <title>2022 Bike Tours</title>
     <meta name="description" content="" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+
     <link
       href="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.css"
       rel="stylesheet"
     />
-    <!-- <script src="js/three.min.js"></script>
-    <script src="js/panolens.min.js"></script> -->
-    <!-- <script src="js/three.js"></script> -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.js"></script>
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.2.1/build/global/luxon.min.js"></script>
     <script src="js/d3-ease.min.js" type="module"></script>
-    <script src="js/scripts.js" type="module"></script>
+    <script src="js/index.js" type="module"></script>
   </head>
 
   <style>
+    html {
+      touch-action: none;
+      font-family: 'Open Sans', sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.4px;
+      word-spacing: 2px;
+      color: white;
+      font-weight: 100;
+      background-color: black;
+    }
+    html,
+    body {
+      overflow: hidden;
+      height: 100%;
+    }
     #map {
       width: 100%;
       height: calc(100vh);
@@ -28,18 +44,18 @@
       /* overscroll-behavior-y: none;
       overscroll-behavior: none; */
     }
-    #flat_image, #pano_image { /* pano_image by fly-visit-pano.js */
+    #flat_image,
+    #pano_image {
+      /* pano_image by fly-visit-pano.js */
       position: absolute;
       top: 0;
       left: 0;
-      /* transform: translate(-50%, -50%); 
-      transform: translate(-50% - calc(50% - 250px), -50%);
-      */
       height: 100%;
       width: 100%;
       pointer-events: none;
     }
-    #flat_image { /* Used by fly-visit-image.js */
+    #flat_image {
+      /* Used by fly-visit-image.js */
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
@@ -58,8 +74,10 @@
     }
     #dateTime {
       position: absolute;
+      display: none;
     }
     #clock {
+      display: none;
       position: absolute;
       top: 10px;
       left: 10px;
@@ -72,13 +90,8 @@
     #date,
     #other_output,
     #camera_info {
+      display: none;
       position: absolute;
-      font-family: Georgia, serif;
-      font-size: 12px;
-      letter-spacing: 0.4px;
-      word-spacing: 2px;
-      color: #e0d8d8;
-      font-weight: 100;
     }
     #date {
       top: 7px;
@@ -121,22 +134,32 @@
       left: 48.9%;
       opacity: 0.8;
     }
+
+    #index {
+      text-align: center;
+    }
+    a:link {
+      color: white;
+    }
+
+    a:visited {
+      color: lightgray;
+    }
   </style>
 
   <body>
     <div id="fullcontainer" class="viewport-full relative scroll-hidden">
+      <div id="index"></div>
       <div id="map"></div>
       <div id="flat_image"></div>
       <div id="pano_image"></div>
-      <div id="datetime">
-        <div id="clock">
-          <div id="hour"></div>
-          <div id="minute"></div>
-        </div>
-        <div id="date"></div>
-        <div id="other_output"></div>
-        <div id="camera_info"></div>
+      <div id="clock">
+        <div id="hour"></div>
+        <div id="minute"></div>
       </div>
+      <div id="date"></div>
+      <div id="other_output"></div>
+      <!-- <div id="camera_info"></div> -->
     </div>
   </body>
 </html>
