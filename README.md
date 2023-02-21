@@ -1,8 +1,12 @@
 # Journey Animation Sequence
 
-Dynamically generate an animation of a journey (e.g. by bike or foot), with photos.  Kinda like [Relive.cc](https://www.relive.cc/), but instead of generating static videos, this generates an interactive, WebGL-based viewing experience that includes support for panoramic photos and (eventually) embedded videos.
+Dynamically generate an animation of a journey (e.g. by bike or foot), including photos.
+
+Kinda like [Relive.cc](https://www.relive.cc/), but instead of generating static videos, this generates an interactive, WebGL-based viewing experience that includes support for panoramic photos and (eventually) embedded videos.
 
 Built w/ [Mapbox GL JS](https://www.mapbox.com/mapbox-gljs), starting with [this blog post](https://www.mapbox.com/blog/building-cinematic-route-animations-with-mapboxgl) and [this soure code](https://github.com/mapbox/impact-tools/tree/master/journey-animation-sequence).
+
+I've been designing the UX by trial-and-error.  Grateful for any feedback or suggestions.
 
 ## Live Demo (work in progress)
 
