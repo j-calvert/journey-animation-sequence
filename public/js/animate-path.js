@@ -23,6 +23,14 @@ const animatePath = async ({ map, path, points, paintLine }) => {
   const clock_element = document.getElementById('clock');
   const date_element = document.getElementById('date');
   const other_output_element = document.getElementById('other_output');
+  const elementsToToggle = [clock_element, date_element, other_output_element];
+  const toggleUIElements = (on) => {
+    if (!on) {
+      elementsToToggle.forEach((e) => (e.style.display = 'none'));
+    } else {
+      elementsToToggle.forEach((e) => (e.style.display = 'block'));
+    }
+  };
 
   let curSpeedup = zoomToSpeedup(map.getZoom()); // TODO: Do speedup as a function of Zoom, not Altitude.
   const picturesOff = () => curSpeedup > SPEEDUP_PIC_CUTOFF;
@@ -83,13 +91,12 @@ const animatePath = async ({ map, path, points, paintLine }) => {
     const pauseForPic = (pausing) => {
       if (pausing) {
         animateUIOff();
+        toggleUIElements(false);
         isPaused = true;
         prevTime = undefined;
-        clock_element.style.display = 'none';
-        date_element.style.display = 'none';
-        other_output_element.style.display = 'none';
       } else {
         animateUIOn();
+        toggleUIElements(true);
         clock_element.style.display = 'block';
         date_element.style.display = 'block';
         other_output_element.style.display = 'block';
@@ -98,6 +105,7 @@ const animatePath = async ({ map, path, points, paintLine }) => {
     };
     const pathDistance = turf.lineDistance(path);
     const coordDurations = path.properties.coordDurations;
+    toggleUIElements(false);
     lastMove = moveCamera({
       map,
       lngLat: path.geometry.coordinates[0],
@@ -106,7 +114,6 @@ const animatePath = async ({ map, path, points, paintLine }) => {
     });
     const frame = async (currentTime) => {
       let wasPaused = false;
-      pauseForPic(false);
 
       if (!prevTime) prevTime = currentTime;
       // If actually paused, or the current camera move is expected to take more than another second, pause animation
@@ -115,8 +122,10 @@ const animatePath = async ({ map, path, points, paintLine }) => {
         prevTime = undefined;
         wasPaused = true;
       } else {
+        toggleUIElements(true);
         // console.log('unpaused');
         unpausedTime += ((currentTime - prevTime) / 1000) * curSpeedup;
+        // pauseForPic(false);
         while (unpausedTime > coordDurations[i] && i < coordDurations.length) {
           i++;
           if (points[i] && !picturesOff()) {

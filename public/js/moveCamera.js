@@ -10,7 +10,7 @@ import * as Types from './types.js';
 const moveCamera = ({ map, lngLat, deltaMs, currentTime }) => {
   const center = map.getCenter();
   const distance = turf.distance(lngLat, [center.lng, center.lat]);
-  const duration = distance; // One second per thousand KM...
+  const duration = distance * 2; // One second per 500 KM...
   if (distance > 100) {
     map.flyTo({
       center: lngLat,
