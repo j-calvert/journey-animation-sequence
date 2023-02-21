@@ -4,9 +4,9 @@ Dynamically generate an animation of a journey (e.g. by bike or foot), with phot
 
 Built w/ [Mapbox GL JS](https://www.mapbox.com/mapbox-gljs), starting with [this blog post](https://www.mapbox.com/blog/building-cinematic-route-animations-with-mapboxgl) and [this soure code](https://github.com/mapbox/impact-tools/tree/master/journey-animation-sequence).
 
-## Live Demo
+## Live Demo (work in progress)
 
-https://jeremycalvert.com/
+[My multi-week trips in 2022](https://jeremycalvert.com/)
 
 ## NOTE
 
