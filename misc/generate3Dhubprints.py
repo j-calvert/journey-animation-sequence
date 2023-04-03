@@ -1,5 +1,6 @@
 import FreeCAD as App
 import Part
+import Draft
 from BOPTools import SplitFeatures, SplitAPI
 from CompoundTools import Explode
 import math
@@ -8,50 +9,11 @@ from itertools import combinations
 
 import numpy as np
 
-
-
-
-def create_cylinder_on_vertex(doc, vertex, radius, start, end):
-    # Create a cylinder object
-    cylinder = doc.addObject("Part::Cylinder", f"Cylinder")
-    # Set the cylinder's radius
-    cylinder.Radius = radius
-    cylinder.Height = end - start
-    # Calculate the rotation axis and angle to align the cylinder with the vertex
-    rotation_axis = App.Vector(0, 0, 1).cross(vertex)
-    rotation_angle = math.degrees(App.Vector(0, 0, 1).getAngle(vertex))
-    # Create the placement with position at the origin and the calculated rotation
-    placement = App.Placement(App.Vector(0, 0, 0), App.Rotation(rotation_axis, rotation_angle))
-    placement.move(vertex.normalize() * start)
-    # Set the cylinder's placement
-    cylinder.Placement = placement
-    return cylinder
-
-def create_sphere_at_vertex(doc, vertex, radius):
-    # Create a sphere object
-    sphere = doc.addObject("Part::Sphere", "Sphere")
-    # Set the sphere's radius
-    sphere.Radius = radius
-    # Create the placement with position at the vertex
-    placement = App.Placement(vertex, App.Rotation(App.Vector(0, 0, 1), 0))
-    # Set the sphere's placement
-    sphere.Placement = placement
-    return sphere
-
-def create_slicing_plane(doc, radius):
-    rp = radius + 1
-    plane = doc.addObject("Part::Plane", "SlicingPlane")
-    plane.Width = 2 * rp  # Make the plane larger than the object
-    plane.Length = 2 * rp
-    # Center the plane at the origin by moving it along its local Y-axis
-    # Rotate the plane 90 degrees around the X-axis to make it lie on the XZ plane
-    # plane.Placement.Rotation = App.Rotation(App.Vector(1, 0, 0), 90)
-    plane.Placement.move(App.Vector(-rp, -rp, 0))
-    return plane
-
-
-
-
+# Start code taken from https://github.com/antiprism/antiprism_python 
+# that I barely understand.
+# Since we read this file in the FreeCAD Python console, and then "exec" it
+# from within that runtime we need to
+# include all our dependencies that (probably) aren't available in that runtime
 '''
 Create coordinates for a higher frequency, plane-faced or spherical,
 icosahedron, octahedron or tetrahedron. For Class I and II patterns
@@ -379,7 +341,7 @@ def class_type(val_str):
     #     '-p', '--polyhedron',
     #     help='base polyhedron: i - icosahedron (default), '
     #          'o - octahedron, t - tetrahedron, T - triangle.',
-    #     choices=['i', 'o', 't', 'T'],
+    #     choices=['i', 'o', 't', 'T,
     #     default='i')
     # parser.add_argument(
     #     '-c', '--class-pattern',
@@ -402,112 +364,203 @@ def class_type(val_str):
     
 
 
+def getPolyPoints(class_pattern = [1,0,0], repeats = 1, polyhedron = 'i', flat_faced = False, equal_length = False):
+    verts = []
+    edges = {}
+    faces = []
+    get_poly(polyhedron, verts, edges, faces)
 
-# Create a new document
-doc = App.newDocument()
-checkDoc = App.newDocument()
-# Trial and error (based on class_pattern, below)
-sphere_radius = 37
-wall_thickness = 5
+    (M, N, reps) = class_pattern
+    repeats = repeats * reps
+    freq = repeats * (M**2 + M*N + N**2)
+
+    grid = {}
+    grid = make_grid(freq, M, N)
+
+    points = verts
+    for face in faces:
+        if polyhedron == 'T':
+            face_edges = (0, 0, 0)  # generate points for all edges
+        else:
+            face_edges = face
+        points[len(points):len(points)] = grid_to_points(
+            grid, freq, equal_length,
+            [verts[face[i]] for i in range(3)], face_edges)
+
+    if not flat_faced:
+        points = [p.unit() for p in points]  # Project onto sphere
+    
+    return points
+
+
+##  End code taken from https://github.com/antiprism/antiprism_python 
+
+## Start code mostly written by GPT-4 ;)
+
+def get_sphere(doc, radius):
+    sphere = doc.addObject("Part::Sphere", "Sphere")
+    sphere.Radius = radius
+    return sphere
+
+def create_slicing_plane(doc, radius):
+    rp = radius + 1
+    plane = doc.addObject("Part::Plane", "SlicingPlane")
+    plane.Width = 2 * rp  # Make the plane larger than the object
+    plane.Length = 2 * rp
+    # Center the plane at the origin by moving it along its local Y-axis
+    # Rotate the plane 90 degrees around the X-axis to make it lie on the XZ plane
+    # plane.Placement.Rotation = App.Rotation(App.Vector(1, 0, 0), 90)
+    plane.Placement.move(App.Vector(-rp, -rp, 0))
+    return plane
+
+
+def get_cylinder(doc, radius, height):
+    cylinder = doc.addObject("Part::Cylinder", f"Cylinder")
+    cylinder.Radius = radius
+    cylinder.Height = height
+    return cylinder
+
+def clone_object_to_another_doc(source_file, target_doc):
+    current_objects = set(target_doc.Objects)
+
+    # Import the temporary STEP file into the target document
+    print(f"Importing from {source_file} to {target_doc.Name}")
+    Part.insert(source_file, target_doc.Name)
+    target_doc.recompute()
+
+    # Find the newly imported object by comparing the object sets
+    new_objects = set(target_doc.Objects) - current_objects
+    print(f"Fount {len(new_objects)} new objects")
+    if len(new_objects) != 1:
+        raise RuntimeError("Failed to find the imported object in the target document")
+
+    imported_obj = new_objects.pop()
+    return imported_obj
+
+def get_nang(doc, v):
+    nang = clone_object_to_another_doc(f'/Users/jcalvert/NangCand{v}.step', doc)
+    rotation_center = App.Vector(0, 0, 0)  # Adjust this if you want to rotate around a different point
+    rotation_axis = App.Vector(0, 1, 0)  # Y-axis
+    rotation_angle = -90  # 90 degrees
+    rot = App.Rotation(rotation_axis, rotation_angle)
+    nang.Placement.Rotation = rot.multiply(nang.Placement.Rotation)
+    doc.recompute()
+    return nang
+
+
+def put_object_on_vertex(doc, object, vertex, rad):
+    # Calculate the rotation axis and angle to align the cylinder with the vertex
+    rotation_axis = App.Vector(0, 0, 1).cross(vertex)
+    rotation_angle = math.degrees(App.Vector(0, 0, 1).getAngle(vertex))
+    # Create the placement with position at the origin and the calculated rotation
+    new_rotation = App.Rotation(rotation_axis, rotation_angle)
+    placement = App.Placement(App.Vector(0, 0, 0), new_rotation.multiply(object.Placement.Rotation))
+    placement.move(vertex.normalize() * rad)
+    # Set the cylinder's placement
+    object.Placement = placement
+    doc.recompute()
+    return object
+
+
+# consts
+cut_depth = 10
 wiggle = 1 # avoid actual tangents/infintesimals
 # Measurements
 nozzle_radius = 8.75 / 2
 body_radius = 17.75 / 2
 neck_height = 8
+cust_shape_winner = 2
+
+def get_cutshape(doc, v):
+    cutshape = get_nang(doc, v)
+    # cutshape = None
+    if cutshape is None:
+        print("couldn't load nang")
+        cutshape = get_cylinder(doc, nozzle_radius, cut_depth + wiggle)
+    return cutshape
+
+### Start Main Method
+
+def nang_ball_core(sphere_radius, class_pattern):
+
+    points = getPolyPoints(class_pattern=class_pattern)
+
+    doc = App.newDocument()
+    doc.Label = f"r{sphere_radius}_cp{class_pattern}"
+    base_sphere = get_sphere(doc, sphere_radius)
+
+    # cut pole-hole down the middle
+    polar_hole = get_cylinder(doc, 1.5, 2 * (sphere_radius + wiggle))
+    polar_hole.Placement.move(App.Vector(0, 0, -(sphere_radius + wiggle)))
+    cut = doc.addObject("Part::Cut", "Shell")
+    cut.Base = base_sphere
+    cut.Tool = polar_hole
+    doc.recompute()
+    base_sphere = cut
+
+    cutshapes = []
+
+    v = cust_shape_winner
+    for vertex in points:
+        # v = (v + 1) % 3
+        # Normalize the vertex and project it to the surface of a sphere
+        normalized_vertex = np.array(vertex) / vertex.mag() * sphere_radius
+        # print(normalized_vertex)
+
+        # Convert the numpy array to a FreeCAD vector
+        # fc_vertex = App.Vector(vertex[0], vertex[1], vertex[2])
+        # fc_vertex = App.Vector(.577, .577, .577)
+        fc_vertex = App.Vector(normalized_vertex[0], normalized_vertex[1], normalized_vertex[2])
+
+
+        cutshape_copy = get_cutshape(doc, 2)
+        put_object_on_vertex(doc, cutshape_copy, fc_vertex, sphere_radius - cut_depth)
+        cutshapes.append(cutshape_copy)
 
 
 
+    doc.recompute()
+    # Perform boolean subtraction
+    cutshape_compound = doc.addObject("Part::Compound", "cutshape_compound")
+    cutshape_compound.Links = cutshapes
+    cutshape_compound.ViewObject.Visibility = True
 
-args = {'repeats': 1, 'polyhedron': 'i', 'class_pattern' : [2,2,1], 'flat_faced': False, 'equal_length': False }
+    doc.recompute()
 
-verts = []
-edges = {}
-faces = []
-get_poly(args['polyhedron'], verts, edges, faces)
+    cut = doc.addObject("Part::Cut", "CutFinal")
+    cut.Base = base_sphere
+    cut.Tool = cutshape_compound
+    doc.recompute()
 
-(M, N, reps) = args['class_pattern']
-repeats = args['repeats'] * reps
-freq = repeats * (M**2 + M*N + N**2)
-
-grid = {}
-grid = make_grid(freq, M, N)
-
-points = verts
-for face in faces:
-    if args['polyhedron'] == 'T':
-        face_edges = (0, 0, 0)  # generate points for all edges
-    else:
-        face_edges = face
-    points[len(points):len(points)] = grid_to_points(
-        grid, freq, args['equal_length'],
-        [verts[face[i]] for i in range(3)], face_edges)
-
-if not args['flat_faced']:
-    points = [p.unit() for p in points]  # Project onto sphere
-
-
-base_sphere = create_sphere_at_vertex(doc, App.Vector(0,0,0), sphere_radius)
-# hollow_center = create_sphere_at_vertex(doc, App.Vector(0,0,0), sphere_radius - wall_thickness)
-# cut = doc.addObject("Part::Cut", "Shell")
-# cut.Base = base_sphere
-# cut.Tool = hollow_center
-# doc.recompute()
-# base_sphere = cut
-cylinders = []
-
-
-for vertex in points:
-    # Normalize the vertex and project it to the surface of a sphere
-    normalized_vertex = np.array(vertex) / vertex.mag() * sphere_radius
-    # print(normalized_vertex)
-
-    # Convert the numpy array to a FreeCAD vector
-    # fc_vertex = App.Vector(vertex[0], vertex[1], vertex[2])
-    fc_vertex = App.Vector(normalized_vertex[0], normalized_vertex[1], normalized_vertex[2])
-
-    cylinder = create_cylinder_on_vertex(doc, fc_vertex, nozzle_radius, sphere_radius - (wall_thickness + wiggle), sphere_radius + wiggle)
-    create_cylinder_on_vertex(checkDoc, fc_vertex, body_radius, sphere_radius + neck_height, sphere_radius + neck_height + 50)
-    cylinders.append(cylinder)
-
-
-# Perform boolean subtraction
-cylinders_compound = doc.addObject("Part::Compound", "cylinders_compound")
-
-cylinders_compound.Links = cylinders
-doc.recompute()
-
-cut = doc.addObject("Part::Cut", "CutFinal")
-cut.Base = base_sphere
-cut.Tool = cylinders_compound
-doc.recompute()
-
-cylinders_compound.ViewObject.Visibility = False
-
-
-checkDoc.recompute()
-# Create a splitting plane (XY Plane)
-plane = create_slicing_plane(doc, sphere_radius)
+    # Create a splitting plane (XY Plane)
+    plane = create_slicing_plane(doc, sphere_radius)
 
 
 
-halves = SplitAPI.slice(cut.Shape, [plane.Shape], 'Split', tolerance = 0.0).Solids
+    halves = SplitAPI.slice(cut.Shape, [plane.Shape], 'Split', tolerance = 0.0).Solids
 
-top_half = doc.addObject("Part::Feature", "TopHalf")
-top_half.Shape = halves[0]
-bottom_half = doc.addObject("Part::Feature", "BottomHalf")
-bottom_half.Shape = halves[1]
+    top_half = doc.addObject("Part::Feature", "TopHalf")
+    top_half.Shape = halves[0]
+    bottom_half = doc.addObject("Part::Feature", "BottomHalf")
+    bottom_half.Shape = halves[1]
 
-bottom_half.Placement.Rotation = App.Rotation(App.Vector(0, 1, 0), 180)
-bottom_half.Placement.move(App.Vector(2 * (sphere_radius + wiggle), 0, 0))
+    bottom_half.Placement.Rotation = App.Rotation(App.Vector(0, 1, 0), 180)
+    bottom_half.Placement.move(App.Vector(2 * (sphere_radius + wiggle), 0, 0))
 
-doc.recompute()
+    # base_sphere.ViewObject.Visibility = False
+    cut.ViewObject.Visibility = False
+    plane.ViewObject.Visibility = False
+    cutshape_compound.ViewObject.Visibility = True
+    doc.recompute()
 
-base_sphere.ViewObject.Visibility = False
-cut.ViewObject.Visibility = False
-plane.ViewObject.Visibility = False
+# Trial and error (based on class_pattern, below)
+sphere_radius = 20
+class_pattern=[1,0,0]
 
-doc.recompute()
+nang_ball_core(sphere_radius=sphere_radius, class_pattern=class_pattern)
 
-
-# to run in freecad:
+# to run from scratch in freecad:
 # exec(open('/Users/jcalvert/journey-animation-sequence/misc/generate3Dhubprints.py').read())
+#
+# to run just nanng_ball_core:
+
