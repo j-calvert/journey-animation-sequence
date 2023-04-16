@@ -158,6 +158,7 @@ if (tour) {
   runTour();
 } else {
   const tours = [
+    ['dominican_republic_2023', 'Dominican Republic<br/>Spring 2023'],
     ['mexico_fall_2022', 'Mexico<br/>Fall 2022'],
     ['sweden_norway_2022', 'Sweden and Norway<br/>Fall 2022'],
     ['hawaii_2022', 'Hawaii<br/>Summer 2022'],
