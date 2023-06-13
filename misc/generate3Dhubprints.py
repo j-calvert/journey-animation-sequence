@@ -8,6 +8,7 @@ from itertools import combinations
 from functools import partial
 import numpy as np
 
+# run in freecad by copy and paste the entire contents of this file into the python console
 
 # Start code taken from https://github.com/antiprism/antiprism_python
 # that I barely understand.
@@ -661,7 +662,11 @@ def placeEdges(
         print(f"length = {length}")
         print(f"rad = {rad}")
         cyl_edge = put_object_along_edge(
-            doc, get_cylinder(doc, edge_diam / 2, length * rad - 2 * offset), edge, rad, offset
+            doc,
+            get_cylinder(doc, edge_diam / 2, length * rad - 2 * offset),
+            edge,
+            rad,
+            offset,
         )
         if is_topedge(edge):
             topshapes.append(cyl_edge)
@@ -750,9 +755,7 @@ def nang_ball_core(sphere_radius, class_pattern):
         edges,
         edge_diam,
         rad=sphere_radius - outer_cut_depth,
-        offset=shell_cylinder_rad
-        * cylinder_dist
-        / (cylinder_dist + cylinder_height)
+        offset=shell_cylinder_rad * cylinder_dist / (cylinder_dist + cylinder_height)
         + wiggle / 2,
     )
 
@@ -766,5 +769,3 @@ def nang_ball_core(sphere_radius, class_pattern):
 nang_ball_core(sphere_radius=43, class_pattern=[2, 2, 1])
 # nang_ball_core(sphere_radius=39, class_pattern=[2,1,1])
 # nang_ball_core(sphere_radius=20, class_pattern=[0, 2, 1])
-
-# run in freecad by copy and paste all of the above into the python console
