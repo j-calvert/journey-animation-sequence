@@ -453,7 +453,7 @@ def getPolyPoints(
 
 ##  End code taken from https://github.com/antiprism/antiprism_python
 
-## Start code mostly written by GPT-4 ;)
+## Start code written with lots of help from GPT-4 :D
 
 
 def get_sphere(doc, radius):
@@ -467,16 +467,32 @@ def create_slicing_plane(doc, radius):
     plane = doc.addObject("Part::Plane", "SlicingPlane")
     plane.Width = 2 * rp  # Make the plane larger than the object
     plane.Length = 2 * rp
-    # Center the plane at the origin by moving it along its local Y-axis
-    # Rotate the plane 90 degrees around the X-axis to make it lie on the XZ plane
-    # plane.Placement.Rotation = App.Rotation(App.Vector(1, 0, 0), 90)
-    plane.Placement.move(App.Vector(-rp, -rp, 0))
+
+    # Adjust the plane's position so that its center is at the origin
+    pos = App.Vector(-rp, -rp, 0)
+
+    # Set up the rotation
+    rotation_axis = App.Vector(0, 1, 0)  # Y-axis
+    rotation_angle = 0  # This works even if non-zero (took a while...)
+    rot = App.Rotation(rotation_axis, rotation_angle)
+    plane.Placement = App.Placement(pos, rot, App.Vector(rp, rp, 0))
     return plane
+
+
+# create_slicing_plane(doc, 100)
 
 
 def get_cylinder(doc, radius, height):
     cylinder = doc.addObject("Part::Cylinder", f"Cylinder")
     cylinder.Radius = radius
+    cylinder.Height = height
+    return cylinder
+
+
+def get_cone(doc, radius2, radius1, height):
+    cylinder = doc.addObject("Part::Cone", f"Coneish")
+    cylinder.Radius1 = radius1
+    cylinder.Radius2 = radius2
     cylinder.Height = height
     return cylinder
 
@@ -497,6 +513,36 @@ def clone_object_to_another_doc(source_file, target_doc):
 
     imported_obj = new_objects.pop()
     return imported_obj
+
+
+def put_object_along_edge(doc, object, edge, rad, offset):
+    # Calculate the rotation axis and angle to align the cylinder with the edge
+
+    v1 = App.Vector(edge[0][0], edge[0][1], edge[0][2])
+    v2 = App.Vector(edge[1][0], edge[1][1], edge[1][2])
+    edge = v2 - v1
+
+    unit_z = App.Vector(0, 0, 1)
+    rotation_axis = unit_z.cross(edge)
+    rotation_angle = math.degrees(App.Vector(0, 0, 1).getAngle(edge))
+
+    # Check if the edge is parallel to Z axis
+    unit_edge = edge.normalize()
+    if unit_edge == unit_z or unit_edge == -unit_z:
+        rotation_axis = App.Vector(1, 0, 0)  # Or use Y axis: App.Vector(0, 1, 0)
+        if edge.z < 0:  # If the edge is in opposite direction, rotate 180 degrees
+            rotation_angle = 180
+
+    # Create the placement with position at the origin and the calculated rotation
+    new_rotation = App.Rotation(rotation_axis, rotation_angle)
+    placement = App.Placement(
+        App.Vector(0, 0, 0), new_rotation.multiply(object.Placement.Rotation)
+    )
+    placement.move(v1.normalize() * rad + edge.normalize() * offset)
+    # Set the cylinder's placement
+    object.Placement = placement
+    doc.recompute()
+    return object
 
 
 def put_object_on_vertex(doc, object, vertex, rad):
@@ -529,27 +575,107 @@ def place_nang(doc, vertex, rad, cust_shape_step_doc):
     return put_object_on_vertex(doc, nang, vertex, rad)
 
 
-# consts
-cut_depth = 12
-wiggle = 1  # avoid actual tangents/infintesimals
-# Nang Measurements
-nozzle_radius = 8.75 / 2
-body_radius = 17.75 / 2
-neck_height = 8
-
-toothpick_diameter = 2.25  # Used for polar hole.  Originally 2.15
-
-
 # toothpick_diameter / 2
-def place_radial_needle(doc, vertex, dist, needle_rad, height):
+def place_radial_cylinder(doc, vertex, dist, cylinder_rad, height):
     return put_object_on_vertex(
-        doc, get_cylinder(doc, needle_rad, height), vertex, dist
+        doc,
+        get_cone(doc, cylinder_rad, cylinder_rad * dist / (dist + height), height),
+        vertex,
+        dist,
     )
 
 
-def cutOnVertices(base_sphere, doc, points, place_cutshape):
-    cutshapes = []
-    for vertex in points:
+def get_polygon_pyramid(doc, cylinder_rad, height, dist, sides):
+    Gui.runCommand("Pyramid", 0)
+    polygon_pyramid = doc.Objects[-1]
+    polygon_pyramid.Radius2 = cylinder_rad
+    polygon_pyramid.Radius1 = cylinder_rad * (height + dist) / dist
+    polygon_pyramid.Height = height
+    polygon_pyramid.Sidescount = sides
+    polygon_pyramid.Z_rotation = 360 / sides / 2
+    return polygon_pyramid
+
+
+def place_radial_polygon_pyramid(doc, vertex, dist, cylinder_rad, height, sides):
+    return put_object_on_vertex(
+        doc, get_polygon_pyramid(doc, cylinder_rad, height, dist, sides), vertex, dist
+    )
+
+
+def place_nang_shell(
+    doc,
+    vertex,
+    rad,
+    cust_shape_step_doc,
+    cylinder_dist,
+    cylinder_rad,
+    cylinder_height,
+):
+    shell = place_radial_cylinder(
+        doc,
+        vertex,
+        dist=cylinder_dist,
+        cylinder_rad=cylinder_rad,
+        height=cylinder_height,
+    )
+    cut_piece = place_nang(doc, vertex, rad, cust_shape_step_doc)
+    cut = doc.addObject("Part::Cut", "NangShell")
+    cut.Base = shell
+    cut.Tool = cut_piece
+    return cut
+
+
+def find_adjacent_edges(vertices):
+    edges = []
+    min_for_i = [float("inf")] * len(vertices)
+
+    for i in range(len(vertices)):
+        for j in range(len(vertices)):
+            if i != j:
+                dist = (vertices[i] - vertices[j]).Length
+                if dist < min_for_i[i]:
+                    min_for_i[i] = dist
+
+    for i in range(len(vertices)):
+        for j in range(i + 1, len(vertices)):
+            distance = (vertices[i] - vertices[j]).Length
+            if distance < min_for_i[i] * 1.5:
+                edges.append((vertices[i], vertices[j]))
+
+    return edges
+
+
+def placeEdges(
+    doc,
+    topshapes,
+    bottomshapes,
+    edges,
+    edge_diam,
+    rad,
+    offset,
+    is_topedge=lambda edge: edge[0].z > -0.0001 or edge[1].z > -0.0001,
+):
+    for edge in edges:
+        print("edge = ", edge)
+        length = (edge[1] - edge[0]).Length
+        print(f"length = {length}")
+        print(f"rad = {rad}")
+        cyl_edge = put_object_along_edge(
+            doc, get_cylinder(doc, edge_diam / 2, length * rad - 2 * offset), edge, rad, offset
+        )
+        if is_topedge(edge):
+            topshapes.append(cyl_edge)
+        else:
+            bottomshapes.append(cyl_edge)
+
+    return topshapes, bottomshapes
+
+
+def placeOnVertices(
+    doc, points, place_cutshape, is_topshape=lambda vertex: vertex.z > -0.0001
+):
+    topshapes, bottomshapes = [], []
+    for idx, vertex in enumerate(points):
         normalized_vertex = np.array(vertex) / vertex.mag()
         # print(normalized_vertex)
 
@@ -559,23 +685,26 @@ def cutOnVertices(base_sphere, doc, points, place_cutshape):
         fc_vertex = App.Vector(
             normalized_vertex[0], normalized_vertex[1], normalized_vertex[2]
         )
+        if is_topshape(fc_vertex):
+            topshapes.append(place_cutshape(doc, fc_vertex))
+        else:
+            bottomshapes.append(place_cutshape(doc, fc_vertex))
 
-        cutshapes.append(place_cutshape(doc, fc_vertex))
+    return topshapes, bottomshapes
 
-    doc.recompute()
-    # Perform boolean subtraction
-    cutshape_compound = doc.addObject("Part::Compound", "cutshape_compound")
-    cutshape_compound.Links = cutshapes
-    cutshape_compound.ViewObject.Visibility = True
 
-    doc.recompute()
+# consts
+outer_cut_depth = 2.5  # For nang head seating
+inner_cut_depth = 5  # For screw head seating
+wiggle = 0.7  # avoid actual tangents/infintesimals
+edge_diam = 2.5  # For screw head seating
+# Nang Measurements
+nozzle_radius = 8.75 / 2
+body_radius = 17.75 / 2
+neck_height = 8
+shell_cylinder_rad = 12 / 2
 
-    cut = doc.addObject("Part::Cut", "CutOnVertices")
-    cut.Base = base_sphere
-    cut.Tool = cutshape_compound
-    base_sphere = cut
-    doc.recompute()
-    return base_sphere
+toothpick_diameter = 2.25  # Used for polar hole.  Originally 2.15
 
 
 ### Start Main Method
@@ -586,69 +715,56 @@ def nang_ball_core(sphere_radius, class_pattern):
     )
 
     doc = App.newDocument()
-    doc.Label = f"r{sphere_radius}_cp{class_pattern}"
-    base_sphere = get_sphere(doc, sphere_radius)
+    doc.Label = f"r{sphere_radius}_cp{class_pattern}_G"
 
-    # cut pole-hole down the middle
-    # polar_hole = get_cylinder(doc, toothpick_diameter / 2, 2 * (sphere_radius + wiggle))
-    # polar_hole.Placement.move(App.Vector(0, 0, -(sphere_radius + wiggle)))
-    # cut = doc.addObject("Part::Cut", "Core_Minus_Pole_Hole")
-    # cut.Base = base_sphere
-    # cut.Tool = polar_hole
-    # doc.recompute()
-    # base_sphere = cut
+    cylinder_height = outer_cut_depth + inner_cut_depth
+    cylinder_dist = sphere_radius - inner_cut_depth - outer_cut_depth + wiggle
 
-    # # cut core sphere out (diam of nang butt)
-    core_sphere = get_sphere(doc, sphere_radius - cut_depth - 5)
-    cut = doc.addObject("Part::Cut", "Core_Minus_Core_Sphere")
-    cut.Base = base_sphere
-    cut.Tool = core_sphere
+    place_nang_partial = partial(
+        place_nang,
+        rad=sphere_radius - outer_cut_depth,
+        cust_shape_step_doc="/Users/jcalvert/3DPrinting/NangSheathwScrew-Fusion.step",
+    )
+    topnangs, bottomnangs = placeOnVertices(doc, points, place_nang_partial)
+    top = doc.addObject("Part::MultiFuse", "TopNangs")
+    bottom = doc.addObject("Part::MultiFuse", "BottomNangs")
+    top.Shapes = topnangs
+    bottom.Shapes = bottomnangs
     doc.recompute()
-    base_sphere = cut
 
-    for place_cutshape in [
-        partial(
-            place_nang,
-            rad=sphere_radius - cut_depth,
-            cust_shape_step_doc="/Users/jcalvert/NangCand6.step",
-        ),
-        # partial(
-        #     place_radial_needle,
-        #     dist=body_radius - wiggle,
-        #     needle_rad=toothpick_diameter / 2,
-        #     height=sphere_radius - body_radius,
-        # ),
-    ]:
-        base_sphere = cutOnVertices(base_sphere, doc, points, place_cutshape)
+    place_cutshape = partial(
+        place_nang_shell,
+        rad=sphere_radius - outer_cut_depth,
+        cust_shape_step_doc="/Users/jcalvert/3DPrinting/NangSheathwScrew-Fusion.step",
+        cylinder_dist=cylinder_dist,
+        cylinder_rad=shell_cylinder_rad,
+        cylinder_height=cylinder_height,
+    )
+    topshapes, bottomshapes = placeOnVertices(doc, points, place_cutshape)
 
-    # Create a splitting plane (XY Plane)
-    plane = create_slicing_plane(doc, sphere_radius)
+    edges = find_adjacent_edges([App.Vector(p[0], p[1], p[2]) for p in points])
+    placeEdges(
+        doc,
+        topshapes,
+        bottomshapes,
+        edges,
+        edge_diam,
+        rad=sphere_radius - outer_cut_depth,
+        offset=shell_cylinder_rad
+        * cylinder_dist
+        / (cylinder_dist + cylinder_height)
+        + wiggle / 2,
+    )
 
-    halves = SplitAPI.slice(
-        base_sphere.Shape, [plane.Shape], "Split", tolerance=0.0
-    ).Solids
-
-    top_half = doc.addObject("Part::Feature", "TopHalf")
-    top_half.Shape = halves[0]
-    bottom_half = doc.addObject("Part::Feature", "BottomHalf")
-    bottom_half.Shape = halves[1]
-
-    bottom_half.Placement.Rotation = App.Rotation(App.Vector(0, 1, 0), 180)
-    bottom_half.Placement.move(App.Vector(2 * (sphere_radius), 0, 0))
-
-    base_sphere.ViewObject.Visibility = False
-    # cut.ViewObject.Visibility = False
-    plane.ViewObject.Visibility = False
-    # cutshape_compound.ViewObject.Visibility = True
+    top = doc.addObject("Part::MultiFuse", "Top")
+    bottom = doc.addObject("Part::MultiFuse", "Bottom")
+    top.Shapes = topshapes
+    bottom.Shapes = bottomshapes
     doc.recompute()
 
 
-nang_ball_core(sphere_radius=52.5, class_pattern=[2, 2, 1])
+nang_ball_core(sphere_radius=43, class_pattern=[2, 2, 1])
+# nang_ball_core(sphere_radius=39, class_pattern=[2,1,1])
+# nang_ball_core(sphere_radius=20, class_pattern=[0, 2, 1])
 
-# to run from scratch in freecad:
-# exec(open('/Users/jcalvert/journey-animation-sequence/misc/generate3Dhubprints.py').read())
-#
-# to run just nang_ball_core, e.g.:
-# nang_ball_core(sphere_radius=26, class_pattern=[0,2,1])
-# Or with cut depth = 12 instead of 10 (should that be a third arg?)
-# nang_ball_core(sphere_radius=28, class_pattern=[0,2,1])
+# run in freecad by copy and paste all of the above into the python console
