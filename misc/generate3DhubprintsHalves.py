@@ -813,5 +813,5 @@ def nang_ball_core(sphere_radius, class_pattern):
 
 
 # nang_ball_core(sphere_radius=43, class_pattern=[2, 2, 1])
-# nang_ball_core(sphere_radius=50, class_pattern=[2,1,1])
-nang_ball_core(sphere_radius=50, class_pattern=[0, 2, 1])
+nang_ball_core(sphere_radius=70, class_pattern=[2,1,1])
+# nang_ball_core(sphere_radius=50, class_pattern=[0, 2, 1])
