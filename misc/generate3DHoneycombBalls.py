@@ -930,7 +930,7 @@ def placeOnVertices(
 
 
 # consts
-outer_cut_depth = 150  # For nang head seating
+outer_cut_depth = 15  # For nang head seating
 inner_cut_depth = 0  # For screw head seating
 wiggle = 0.2  # Planar slab edges incident on cones (for the nang shells)
 # We want the edge to be a bit thicker near the equator
@@ -942,7 +942,7 @@ bulb_stem_diameter = 37
 bulb_diam = 66  # 62 plus 4 mm wiggle room
 toothpick_diameter = 2.4  # Used for polar hole.  Originally 2.15
 sphere_radius=bulb_diam / 2
-class_pattern=[1, 0, 12]
+class_pattern=[1, 0, 8]
 
 points = getPolyPoints(class_pattern=class_pattern)
 print(
