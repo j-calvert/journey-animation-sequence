@@ -134,7 +134,7 @@ class Vec:
     @staticmethod
     def triple(v0, v1, v2):
         return Vec.dot(v0, Vec.cross(v1, v2))
-    
+
     def getAppVec(self):
         return App.Vector(self.v[0], self.v[1], self.v[2])
 
@@ -493,6 +493,12 @@ def get_cylinder(doc, radius, height, name="Cylinder"):
     cylinder.Height = height
     return cylinder
 
+def get_ellipsoid(doc, radius, height, name="Ellipsoid"):
+    ellipsoid = doc.addObject("Part::Ellipsoid", name)
+    ellipsoid.Radius1 = height
+    ellipsoid.Radius2 = radius
+    ellipsoid.Radius3 = radius
+    return ellipsoid
 
 def get_cone(doc, radius2, radius1, height):
     cylinder = doc.addObject("Part::Cone", f"Coneish")
@@ -566,8 +572,9 @@ def put_object_on_vertex(doc, object, vertex, rad):
     return object
 
 
-# cust_shape_step = "/Users/jcalvert/NangCand6.step"
-def place_nang(doc, vertex, rad, cust_shape_step_doc):
+cust_shape_step_doc = "/Users/jcalvert/3DPrinting/BulbAndSocket.step"
+
+def place_step_shape(doc, vertex, rad, cust_shape_step_doc):
     nang = clone_object_to_another_doc(cust_shape_step_doc, doc)
     rotation_center = App.Vector(
         0, 0, 0
@@ -589,11 +596,29 @@ def place_radial_cone(doc, vertex, dist, cylinder_rad, height):
         dist,
     )
 
+
 # toothpick_diameter / 2
 def place_radial_cylinder(doc, vertex, dist, cylinder_rad, height):
     return put_object_on_vertex(
         doc,
-        get_cylinder(doc, cylinder_rad,  height),
+        get_cylinder(doc, cylinder_rad, height),
+        vertex,
+        dist,
+    )
+
+def place_radial_ellipsoid(doc, vertex, dist, cylinder_rad, height):
+    return put_object_on_vertex(
+        doc,
+        get_ellipsoid(doc, cylinder_rad, height),
+        vertex,
+        dist,
+    )
+
+
+def place_radial_sphere(doc, vertex, dist, sphere_radius):
+    return put_object_on_vertex(
+        doc,
+        get_sphere(doc, radius=sphere_radius),
         vertex,
         dist,
     )
@@ -642,11 +667,11 @@ def place_toothpick_shell(
         cylinder_dist,
     )
 
-
     cut = doc.addObject("Part::Cut", "NangShell")
     cut.Base = shell
     cut.Tool = cut_piece
     return cut
+
 
 def place_no_toothpick_shell_node(
     doc,
@@ -668,8 +693,6 @@ def place_no_toothpick_shell_node(
         height=cylinder_height,
     )
     return shell
-
-
 
 
 def find_adjacent_edges(vertices):
@@ -706,14 +729,11 @@ def find_dual_vertices(edges, edge_vids, vertices):
             if len(eids) == 3:
                 for k in range(j + 1, len(edges)):
                     if edge_vids[k][0] in eids and edge_vids[k][1] in eids:
-                        center = App.Vector(0,0,0)
+                        center = App.Vector(0, 0, 0)
                         for eid in eids:
                             center += vertices[eid]
                         dual_vertices.append(center / 3)
     return dual_vertices
-
-
-
 
 
 def make_slab_edge(
@@ -726,106 +746,32 @@ def make_slab_edge(
     outer_cut_depth,
     inner_cut_depth,
 ):
-    print(
-        f"make_slab_edge: {edge}, {rad}, {cylinder_rad}, {edge_thickness}, {outer_cut_depth}, {inner_cut_depth}"
-    )
-    print(
-        f"Calling make_slab_edge({edge}, {rad}, {cylinder_rad}, {edge_thickness}, {outer_cut_depth}, {inner_cut_depth})"
-    )
     ee1 = App.Vector(edge[0][0], edge[0][1], edge[0][2])
     ee2 = App.Vector(edge[1][0], edge[1][1], edge[1][2])
     v1_inner = ee1 * (rad - inner_cut_depth)
     v1_outer = ee1 * (rad + outer_cut_depth)
     v2_inner = ee2 * (rad - inner_cut_depth)
     v2_outer = ee2 * (rad + outer_cut_depth)
-    vedge = v2_outer - v1_outer
-    inner_offset = (
-        cylinder_rad * (rad - inner_cut_depth - outer_cut_depth) / rad - wiggle
+    # vedge = v2_outer - v1_outer
+    # inner_offset = (
+    #     cylinder_rad * (rad - inner_cut_depth - outer_cut_depth) / rad - wiggle
+    # )
+    # outer_offset = cylinder_rad - wiggle
+    # edge_normalized = App.Vector(vedge.x, vedge.y, vedge.z).normalize()
+    # edge_projected_1 = edge_normalized - edge_normalized.dot(ee1) * ee1
+    # edge_projected_2 = edge_normalized - edge_normalized.dot(ee2) * ee2
+    # p1 = v1_outer + edge_projected_1 * outer_offset
+    # p2 = v1_inner + edge_projected_1 * inner_offset
+    # p3 = v2_inner - edge_projected_2 * inner_offset
+    # p4 = v2_outer - edge_projected_2 * outer_offset
+    # shapegroups[get_shapegroup_key(ee1, rad)].append(
+    #     solid_feature_doc(doc, slab_solid(edge_thickness, p1, p2, p3, p4))
+    # )
+    shapegroups[min(get_shapegroup_key(ee1, rad), get_shapegroup_key(ee2, rad))].append(
+        solid_feature_doc(
+            doc, slab_solid(edge_thickness, v1_outer, v1_inner, v2_inner, v2_outer)
+        )
     )
-    outer_offset = cylinder_rad - wiggle
-    edge_normalized = App.Vector(vedge.x, vedge.y, vedge.z).normalize()
-    edge_projected_1 = edge_normalized - edge_normalized.dot(ee1) * ee1
-    edge_projected_2 = edge_normalized - edge_normalized.dot(ee2) * ee2
-    p1 = v1_outer + edge_projected_1 * outer_offset
-    p2 = v1_inner + edge_projected_1 * inner_offset
-    p3 = v2_inner - edge_projected_2 * inner_offset
-    p4 = v2_outer - edge_projected_2 * outer_offset
-
-    if get_shapegroup_key(ee1, rad) == get_shapegroup_key(ee2, rad):
-        shapegroups[get_shapegroup_key(ee1, rad)].append(
-            solid_feature_doc(doc, slab_solid(edge_thickness, p1, p2, p3, p4))
-        )
-    else:
-        sgk1, sgk2 = get_shapegroup_key(ee1, rad), get_shapegroup_key(ee2, rad)
-        # Make a couple of interlocking edge halves.  Arbitrary which one is the "outie" and which is the "innie"
-        if sgk1 < sgk2:
-            slab_solid_1 = slab_solid(
-                edge_thickness,
-                p1,
-                p2,
-                (p3 + p2) / 2,
-                (p4 + p1) / 2,
-            )
-            slab_solid_2 = slab_solid(
-                edge_thickness,
-                (p1 + p4) / 2,
-                (p2 + p3) / 2,
-                p3,
-                p4,
-            )
-        else:
-            slab_solid_2 = slab_solid(
-                edge_thickness,
-                p1,
-                p2,
-                (p3 + p2) / 2,
-                (p4 + p1) / 2,
-            )
-            slab_solid_1 = slab_solid(
-                edge_thickness,
-                (p1 + p4) / 2,
-                (p2 + p3) / 2,
-                p3,
-                p4,
-            )
-
-        brad_radius = toothpick_diameter / 2
-        mo = (p1 + p4) / 2
-        mi = (p2 + p3) / 2
-        brad_cylinder = extrude_cylinder(mo, mi - mo, brad_radius, mi - mo)
-
-        h_parts = 2
-        for d in range(h_parts):
-            # print(f"d: {d}")
-            cylinder = extrude_cylinder(
-                mo + (mi - mo) * d / h_parts,
-                mi - mo,
-                edge_thickness + brad_radius,
-                (mi - mo) / h_parts,
-            )
-            # print(f"cylinder: {cylinder}")
-            if d % 2 == 0:
-                slab_solid_1 = slab_solid_1.fuse(cylinder)
-                print(f"s1: {slab_solid_1}")
-                slab_solid_2 = slab_solid_2.cut(cylinder)
-                print(f"s2: {slab_solid_2}")
-            else:
-                slab_solid_1 = slab_solid_1.cut(cylinder)
-                print(f"s1: {slab_solid_1}")
-                slab_solid_2 = slab_solid_2.fuse(cylinder)
-                print(f"s2: {slab_solid_2}")
-            # print(d)
-            # print(slab_solid_1)
-
-        slab_solid_1 = slab_solid_1.cut(brad_cylinder)
-        slab_solid_2 = slab_solid_2.cut(brad_cylinder)
-        print(slab_solid_1)
-        shapegroups[sgk1].append(
-            solid_feature_doc(doc, slab_solid_1 if sgk1 < sgk2 else slab_solid_2)
-        )
-        shapegroups[sgk2].append(
-            solid_feature_doc(doc, slab_solid_2 if sgk1 < sgk2 else slab_solid_1)
-        )
 
 
 def extrude_cylinder(center, normal, radius, height):
@@ -932,9 +878,12 @@ tetra_vertices = [
 
 sgkVertsOrig = []
 get_icosahedron(sgkVertsOrig, [])
-# sgkVerts = [v.getAppVec() for v in sgkVertsOrig]
-skgEdges, skgEdge_vids, skgVertices = find_adjacent_edges([p.getAppVec() for p in sgkVertsOrig])
+# sgkVerts = [v.getAppVec() for v in sgkVertsOrig[0:1]]
+skgEdges, skgEdge_vids, skgVertices = find_adjacent_edges(
+    [p.getAppVec() for p in sgkVertsOrig]
+)
 sgkVerts = find_dual_vertices(skgEdges, skgEdge_vids, skgVertices)
+
 
 
 def get_shapegroup_key(vertex, rad):
@@ -947,14 +896,22 @@ def get_shapegroup_key(vertex, rad):
 def get_shapegroup_keyX(vertex, rad):
     return 0 if vertex.z > -0.1 else 1
 
-bulb_diam = 70 # 62 plus 4 mm wiggle room
 
 def get_shapegroup_keyX(vertex, rad):
     norm_bulb_rad = bulb_diam / 2 / rad
 
-    return 0 if (vertex.z < 0 or vertex.x * vertex.x + vertex.y * vertex.y > norm_bulb_rad * norm_bulb_rad) else 1
+    return (
+        0
+        if (
+            vertex.z < 0
+            or vertex.x * vertex.x + vertex.y * vertex.y > norm_bulb_rad * norm_bulb_rad
+        )
+        else 1
+    )
 
 
+def get_shapegroup_keyX(vertex, rad):
+    return 0
 
 
 def placeOnVertices(
@@ -973,97 +930,110 @@ def placeOnVertices(
 
 
 # consts
-outer_cut_depth = 30  # For nang head seating
+outer_cut_depth = 150  # For nang head seating
 inner_cut_depth = 0  # For screw head seating
 wiggle = 0.2  # Planar slab edges incident on cones (for the nang shells)
-edge_diam = .75  # For edge thickness
+# We want the edge to be a bit thicker near the equator
+min_edge_diam = 0.5  # For edge thickness
+max_edge_diam = .75  # For edge thickness
+edge_diam = .7  # For edge thickness
 shell_cylinder_rad = edge_diam  # = 2.5
 bulb_stem_diameter = 37
-
+bulb_diam = 66  # 62 plus 4 mm wiggle room
 toothpick_diameter = 2.4  # Used for polar hole.  Originally 2.15
+sphere_radius=bulb_diam / 2
+class_pattern=[1, 0, 12]
+
+points = getPolyPoints(class_pattern=class_pattern)
+print(
+    f"Generated {len(points)} points for class pattern {class_pattern} with radius {sphere_radius}"
+)
+
+doc = App.newDocument()
+doc.Label = f"r{sphere_radius}_cp{class_pattern}_G"
+
+place_cutshape = partial(
+    place_no_toothpick_shell_node,
+    rad=sphere_radius,
+    toothpick_diameter=toothpick_diameter, 
+    outer_cut_depth=outer_cut_depth,
+    inner_cut_depth=inner_cut_depth,
+    cylinder_rad=shell_cylinder_rad,
+)
+shapegroups = [[] for v in sgkVerts]
+# fc_vertexes = []
+# for idx, vertex in enumerate(points):
+
+#     normalized_vertex = np.array(vertex) / vertex.mag()
+#     fc_vertexes.append( App.Vector(
+#         normalized_vertex[0], normalized_vertex[1], normalized_vertex[2]
+#     ))
+# placeOnVertices(doc, shapegroups, points, place_cutshape)
+
+edges, edge_vids, vertices = find_adjacent_edges(
+    [App.Vector(p[0], p[1], p[2]) for p in points]
+)
+dual_vertices = find_dual_vertices(edges, edge_vids, vertices)
+print(f"Found {len(dual_vertices)} dual vertices")
+edges, edge_vids, vertices = find_adjacent_edges(dual_vertices)
+# placeOnVertices(doc, shapegroups, vertices, place_cutshape, rad=sphere_radius)
+
+placeEdges(
+    doc,
+    shapegroups,
+    edges,
+    edge_diam,
+    rad=sphere_radius,
+    outer_cut_depth=outer_cut_depth,
+    inner_cut_depth=inner_cut_depth,
+    # TODO: Offset isn't working for some reason
+    offset=shell_cylinder_rad,
+)
+
+for key, shapegroup in enumerate(shapegroups):
+    print(f"key: {key}")
+    fuse = doc.addObject("Part::MultiFuse", f"Group_{str(key)}")
+    fuse.Shapes = shapegroup
+
+doc.recompute()
+
+# for key, sgkvOrig in enumerate(sgkVertsOrig):
+#     place_radial_ellipsoid(
+#         doc,
+#         sgkVertsOrig[key].getAppVec(),
+#         dist=bulb_diam / 4,
+#         cylinder_rad=bulb_diam,
+#         height=sphere_radius + outer_cut_depth - bulb_diam / 4,
+#     )
 
 
-### Start Main Method
-def nang_ball_core(sphere_radius, class_pattern):
-    points = getPolyPoints(class_pattern=class_pattern)
-    print(
-        f"Generated {len(points)} points for class pattern {class_pattern} with radius {sphere_radius}"
-    )
+# subpoints = getPolyPoints(class_pattern=[1, 0, 3])
 
-    doc = App.newDocument()
-    doc.Label = f"r{sphere_radius}_cp{class_pattern}_G"
+# cutspheres = []
+# for key, subpoint in enumerate(subpoints):
+#     cutspheres.append(place_radial_sphere(
+#         doc,
+#         subpoint.getAppVec(),
+#         dist=bulb_diam + sphere_radius,
+#         sphere_radius=.4 * bulb_diam,
+#     ))
 
-    place_cutshape = partial(
-        place_no_toothpick_shell_node,
-        rad=sphere_radius,
-        toothpick_diameter=toothpick_diameter,
-        outer_cut_depth=outer_cut_depth,
-        inner_cut_depth=inner_cut_depth,
-        cylinder_rad=shell_cylinder_rad,
-    )
-    shapegroups = [[] for v in sgkVerts]
-    # fc_vertexes = []
-    # for idx, vertex in enumerate(points):
+# cutfuse = doc.addObject("Part::MultiFuse", f"Group_Cut")
+# cutfuse.Shapes = cutspheres
 
-    #     normalized_vertex = np.array(vertex) / vertex.mag()
-    #     fc_vertexes.append( App.Vector(
-    #         normalized_vertex[0], normalized_vertex[1], normalized_vertex[2]
-    #     ))
-    # placeOnVertices(doc, shapegroups, points, place_cutshape)
-
-    edges, edge_vids, vertices = find_adjacent_edges([App.Vector(p[0], p[1], p[2]) for p in points])
-    dual_vertices = find_dual_vertices(edges, edge_vids, vertices)
-    print(f"Found {len(dual_vertices)} dual vertices")
-    edges, edge_vids, vertices = find_adjacent_edges(dual_vertices)
-    placeOnVertices(doc, shapegroups, vertices, place_cutshape, rad=sphere_radius)
-
-
-    placeEdges(
-        doc,
-        shapegroups,
-        edges,
-        edge_diam,
-        rad=sphere_radius,
-        outer_cut_depth=outer_cut_depth,
-        inner_cut_depth=inner_cut_depth,
-        # TODO: Offset isn't working for some reason
-        offset=shell_cylinder_rad,
-    )
-
-    for key, shapegroup in enumerate(shapegroups):
-        print(f"key: {key}")
-        fuse = doc.addObject("Part::MultiFuse", f"Group_{str(key)}")
-        fuse.Shapes = shapegroup
-    
-
-    doc.recompute()
-
-
-    place_radial_cylinder(doc, sgkVertsOrig[0].getAppVec(), dist=0, cylinder_rad=bulb_stem_diameter / 2, height = sphere_radius + outer_cut_depth + wiggle)
-
-    # cut_piece = get_cylinder(doc, bulb_stem_diameter / 2, sphere_radius + 2 * outer_cut_depth, "BulbStem"),
-    # cut = doc.addObject("Part::Cut", "TopCut")
-    # cut.Base = doc.Group_1
-    # cut.Tool = doc.BulbStem
-    # doc.recompute()
-
-# doc = App.activeDocument()
-# cut = doc.addObject("Part::Cut", "TopCut")
-# cut.Base = doc.Group_1
-# cut.Tool = doc.BulbStem
 # doc.recompute()
-# cut_piece = get_cylinder(doc, bulb_stem_diameter / 2, 60),
-# cut = doc.addObject("Part::Cut", "TopCut")
-# cut.Base = fuse
-# cut.Tool = cut_piece
 
 
-# nang_ball_core(sphere_radius=73, class_pattern=[2, 2, 1])
-# nang_ball_core(sphere_radius=50, class_pattern=[4, 3, 2])
-# nang_ball_core(sphere_radius=80, class_pattern=[3, 3, 1])
-nang_ball_core(sphere_radius=50, class_pattern=[1, 0, 12])
-print(f"Found {len(sgkVerts)} sgkVerts from {len(sgkVertsOrig)} icosahedron verts")
+# # For the bulb to go in
+# place_radial_cylinder(
+#     doc,
+#     App.Vector(0, 0, -1),
+#     dist=0,
+#     cylinder_rad=bulb_diam / 2,
+#     height=sphere_radius + outer_cut_depth + wiggle,
+# )
 
-# nang_ball_core(sphere_radius=33, class_pattern=[0, 1, 1])
-# nang_ball_core(sphere_radius=15, class_pattern=[1, 1, 1])
-# nang_ball_core(sphere_radius=50, class_pattern=[0, 1, 1])
+
+# place_step_shape(doc, App.Vector(0, 0, 1), rad=0,
+#                  cust_shape_step_doc=cust_shape_step_doc)
+

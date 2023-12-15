@@ -651,18 +651,33 @@ def find_adjacent_edges(vertices):
 
 
 def make_slab_edge(
-    doc, edge, rad, cylinder_rad, edge_thickness, outer_cut_depth, inner_cut_depth
+    doc,
+    shapegroups,
+    edge,
+    rad,
+    cylinder_rad,
+    edge_thickness,
+    outer_cut_depth,
+    inner_cut_depth,
 ):
+    print(
+        f"make_slab_edge: {edge}, {rad}, {cylinder_rad}, {edge_thickness}, {outer_cut_depth}, {inner_cut_depth}"
+    )
+    print(
+        f"Calling make_slab_edge({edge}, {rad}, {cylinder_rad}, {edge_thickness}, {outer_cut_depth}, {inner_cut_depth})"
+    )
     ee1 = App.Vector(edge[0][0], edge[0][1], edge[0][2])
     ee2 = App.Vector(edge[1][0], edge[1][1], edge[1][2])
     v1_inner = ee1 * (rad - inner_cut_depth)
     v1_outer = ee1 * (rad + outer_cut_depth)
     v2_inner = ee2 * (rad - inner_cut_depth)
     v2_outer = ee2 * (rad + outer_cut_depth)
-    edge = v2_outer - v1_outer
-    inner_offset = cylinder_rad * (rad - inner_cut_depth - outer_cut_depth) / rad
-    outer_offset = cylinder_rad
-    edge_normalized = App.Vector(edge.x, edge.y, edge.z).normalize()
+    vedge = v2_outer - v1_outer
+    inner_offset = (
+        cylinder_rad * (rad - inner_cut_depth - outer_cut_depth) / rad - wiggle
+    )
+    outer_offset = cylinder_rad - wiggle
+    edge_normalized = App.Vector(vedge.x, vedge.y, vedge.z).normalize()
     edge_projected_1 = edge_normalized - edge_normalized.dot(ee1) * ee1
     edge_projected_2 = edge_normalized - edge_normalized.dot(ee2) * ee2
     p1 = v1_outer + edge_projected_1 * outer_offset
@@ -670,36 +685,131 @@ def make_slab_edge(
     p3 = v2_inner - edge_projected_2 * inner_offset
     p4 = v2_outer - edge_projected_2 * outer_offset
 
-    # Compute normal to the face (cross product of two edges)
+    if get_shapegroup_key(ee1) == get_shapegroup_key(ee2):
+        shapegroups[get_shapegroup_key(ee1)].append(
+            solid_feature_doc(doc, slab_solid(edge_thickness, p1, p2, p3, p4))
+        )
+    else:
+        sgk1, sgk2 = get_shapegroup_key(ee1), get_shapegroup_key(ee2)
+        # Make a couple of interlocking edge halves.  Arbitrary which one is the "outie" and which is the "innie"
+        if sgk1 > sgk2:
+            slab_solid_1 = slab_solid(
+                edge_thickness,
+                p1,
+                p2,
+                (p3 + p2) / 2,
+                (p4 + p1) / 2,
+            )
+            slab_solid_2 = slab_solid(
+                edge_thickness,
+                (p1 + p4) / 2,
+                (p2 + p3) / 2,
+                p3,
+                p4,
+            )
+        else:
+            slab_solid_2 = slab_solid(
+                edge_thickness,
+                p1,
+                p2,
+                (p3 + p2) / 2,
+                (p4 + p1) / 2,
+            )
+            slab_solid_1 = slab_solid(
+                edge_thickness,
+                (p1 + p4) / 2,
+                (p2 + p3) / 2,
+                p3,
+                p4,
+            )
+
+        brad_radius = 1.7 / 2
+        mo = (p1 + p4) / 2
+        mi = (p2 + p3) / 2
+        brad_cylinder = get_cylinder(mo, mi - mo, brad_radius, mi - mo)
+
+        h_parts = 2
+        for d in range(h_parts):
+            print(f"d: {d}")
+            cylinder = get_cylinder(
+                mo + (mi - mo) * d / h_parts,
+                mi - mo,
+                edge_thickness / 2 + brad_radius,
+                (mi - mo) / h_parts,
+            )
+            print(f"cylinder: {cylinder}")
+            if d % 2 == 0:
+                slab_solid_1 = slab_solid_1.fuse(cylinder)
+                print(f"s1: {slab_solid_1}")
+                slab_solid_2 = slab_solid_2.cut(cylinder)
+                print(f"s2: {slab_solid_2}")
+            else:
+                slab_solid_1 = slab_solid_1.cut(cylinder)
+                print(f"s1: {slab_solid_1}")
+                slab_solid_2 = slab_solid_2.fuse(cylinder)
+                print(f"s2: {slab_solid_2}")
+            print(d)
+            print(slab_solid_1)
+
+        slab_solid_1 = slab_solid_1.cut(brad_cylinder)
+        slab_solid_2 = slab_solid_2.cut(brad_cylinder)
+        print(slab_solid_1)
+        shapegroups[sgk1].append(
+            solid_feature_doc(doc, slab_solid_1 if sgk1 > sgk2 else slab_solid_2)
+        )
+        shapegroups[get_shapegroup_key(ee2)].append(
+            solid_feature_doc(doc, slab_solid_2 if sgk1 > sgk2 else slab_solid_1)
+        )
+
+
+def get_cylinder(center, normal, radius, height):
+    circle = Part.Circle(center, normal, radius)
+    edge = circle.toShape()
+
+    # Create a face from the circle edge
+    face = Part.Face(Part.Wire(edge))
+
+    # Extrude the face along the normal to create the cylinder
+    return face.extrude(height)
+
+
+def solid_feature_doc(doc, solid):
+    sfd = doc.addObject("Part::Feature")
+    sfd.Shape = solid
+    return sfd
+
+
+def slab_solid(
+    edge_thickness,
+    p1,
+    p2,
+    p3,
+    p4,
+    alignment=lambda p, normal, edge_thickness: p - normal * edge_thickness / 2,
+):
     edge1 = p2 - p1
     edge2 = p4 - p1
     normal = edge1.cross(edge2).normalize()
     # Create the trapezoid
     wire = Part.makePolygon(
-        [p - normal * edge_thickness / 2 for p in [p1, p2, p3, p4, p1]]
+        [alignment(p, normal, edge_thickness) for p in [p1, p2, p3, p4, p1]]
     )
     face = Part.Face(wire)
 
     height = edge_thickness
     solid = face.extrude(normal * height)
-
-    my_solid = doc.addObject("Part::Feature")
-    my_solid.Shape = solid
-
-    return my_solid
+    return solid
 
 
 def placeEdges(
     doc,
-    topshapes,
-    bottomshapes,
+    shapegroups,
     edges,
     edge_diam,
     rad,
     offset,
     outer_cut_depth,
     inner_cut_depth,
-    is_topedge=lambda edge: edge[0].z > -0.0001 or edge[1].z > -0.0001,
 ):
     for edge in edges:
         length = (edge[1] - edge[0]).Length
@@ -710,8 +820,10 @@ def placeEdges(
         #     rad,
         #     offset,
         # )
+        # if(get_shapegroup_key(edge[0]) == get_shapegroup_key(edge[1])):
         slab_edge = make_slab_edge(
             doc,
+            shapegroups,
             edge,
             rad,
             cylinder_rad=offset,
@@ -719,18 +831,57 @@ def placeEdges(
             outer_cut_depth=outer_cut_depth,
             inner_cut_depth=inner_cut_depth,
         )
-        if is_topedge(edge):
-            topshapes.append(slab_edge)
-        else:
-            bottomshapes.append(slab_edge)
 
-    return topshapes, bottomshapes
+    return
+
+
+def get_shapegroup_keyXX(vertex):
+    ax, ay, az = abs(vertex.x), abs(vertex.y), abs(vertex.z)
+    if ax >= ay - 0.001 and ax >= az - 0.001:
+        if vertex.x >= 0:
+            return 0
+        else:
+            return 1
+    elif ay > ax and ay >= az - 0.001:
+        if vertex.y >= 0:
+            return 2
+        else:
+            return 3
+    else:
+        if vertex.z >= 0:
+            return 4
+        else:
+            return 5
+
+
+sqrt_2_over_3 = math.sqrt(2.0 / 3.0)
+sqrt_1_over_3 = math.sqrt(1.0 / 3.0)
+
+tetra_vertices = [
+    App.Vector(0, 0, 1),
+    App.Vector(2 * sqrt_2_over_3, 0, -1 / 3),
+    App.Vector(-sqrt_2_over_3, sqrt_1_over_3, -1 / 3),
+    App.Vector(-sqrt_2_over_3, -sqrt_1_over_3, -1 / 3),
+]
+
+
+def get_shapegroup_keyX(vertex):
+    vv = App.Vector(vertex.x, vertex.y, vertex.z)
+
+    dot_products = [vv.dot(tetra_vector) for tetra_vector in tetra_vertices]
+    return np.argmax(dot_products)
+
+
+def get_shapegroup_key(vertex):
+    return 0 if vertex.x > -0.1 else 1
 
 
 def placeOnVertices(
-    doc, points, place_cutshape, is_topshape=lambda vertex: vertex.z > -0.0001
+    doc,
+    shapegroups,
+    points,
+    place_cutshape,
 ):
-    topshapes, bottomshapes = [], []
     for idx, vertex in enumerate(points):
         normalized_vertex = np.array(vertex) / vertex.mag()
         # print(normalized_vertex)
@@ -741,18 +892,16 @@ def placeOnVertices(
         fc_vertex = App.Vector(
             normalized_vertex[0], normalized_vertex[1], normalized_vertex[2]
         )
-        if is_topshape(fc_vertex):
-            topshapes.append(place_cutshape(doc, fc_vertex))
-        else:
-            bottomshapes.append(place_cutshape(doc, fc_vertex))
-
-    return topshapes, bottomshapes
+        shapegroups[get_shapegroup_key(fc_vertex)].append(
+            place_cutshape(doc, fc_vertex)
+        )
+    return
 
 
 # consts
 outer_cut_depth = 5  # For nang head seating
 inner_cut_depth = 5  # For screw head seating
-wiggle = 0.35  # avoid actual tangents/infintesimals
+wiggle = 0.2  # Planar slab edges incident on cones (for the nang shells)
 edge_diam = 2.5  # For edge thickness
 shell_cylinder_rad = 12 / 2
 
@@ -769,16 +918,17 @@ def nang_ball_core(sphere_radius, class_pattern):
     doc = App.newDocument()
     doc.Label = f"r{sphere_radius}_cp{class_pattern}_G"
 
+    nanggroups = [[] for _ in range(6)]
     place_nang_partial = partial(
         place_nang,
         rad=sphere_radius - wiggle,
         cust_shape_step_doc="/Users/jcalvert/3DPrinting/NangSheathwScrew-Fusion.step",
     )
-    topnangs, bottomnangs = placeOnVertices(doc, points, place_nang_partial)
-    top = doc.addObject("Part::MultiFuse", "TopNangs")
-    bottom = doc.addObject("Part::MultiFuse", "BottomNangs")
-    top.Shapes = topnangs
-    bottom.Shapes = bottomnangs
+    placeOnVertices(doc, nanggroups, points, place_nang_partial)
+    for key, nanggroup in enumerate(nanggroups):
+        fuse = doc.addObject("Part::MultiFuse", f"NangGroup")
+        fuse.Shapes = nanggroup
+
     doc.recompute()
 
     place_cutshape = partial(
@@ -789,13 +939,13 @@ def nang_ball_core(sphere_radius, class_pattern):
         inner_cut_depth=inner_cut_depth,
         cylinder_rad=shell_cylinder_rad,
     )
-    topshapes, bottomshapes = placeOnVertices(doc, points, place_cutshape)
+    shapegroups = [[], [], [], [], [], []]
+    placeOnVertices(doc, shapegroups, points, place_cutshape)
 
     edges = find_adjacent_edges([App.Vector(p[0], p[1], p[2]) for p in points])
     placeEdges(
         doc,
-        topshapes,
-        bottomshapes,
+        shapegroups,
         edges,
         edge_diam,
         rad=sphere_radius,
@@ -804,14 +954,15 @@ def nang_ball_core(sphere_radius, class_pattern):
         # TODO: Offset isn't working for some reason
         offset=shell_cylinder_rad,
     )
+    for key, shapegroup in enumerate(shapegroups):
+        fuse = doc.addObject("Part::MultiFuse", f"{key}_Group")
+        fuse.Shapes = shapegroup
 
-    top = doc.addObject("Part::MultiFuse", "Top")
-    bottom = doc.addObject("Part::MultiFuse", "Bottom")
-    top.Shapes = topshapes
-    bottom.Shapes = bottomshapes
     doc.recompute()
 
 
-# nang_ball_core(sphere_radius=43, class_pattern=[2, 2, 1])
-# nang_ball_core(sphere_radius=50, class_pattern=[2,1,1])
-nang_ball_core(sphere_radius=50, class_pattern=[0, 2, 1])
+nang_ball_core(sphere_radius=73, class_pattern=[2, 2, 1])
+# nang_ball_core(sphere_radius=73, class_pattern=[3, 3, 1])
+# nang_ball_core(sphere_radius=33, class_pattern=[0, 1, 1])
+# nang_ball_core(sphere_radius=15, class_pattern=[1, 1, 1])
+# nang_ball_core(sphere_radius=50, class_pattern=[0, 2, 1])
