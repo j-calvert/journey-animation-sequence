@@ -8,12 +8,11 @@ from itertools import combinations
 from functools import partial
 import numpy as np
 
-# run in freecad by copy and paste the entire contents of this file into the python console
+# run in FreeCAD by copying and pasteing the contents of this file into its Python console
 
 # Start code taken from https://github.com/antiprism/antiprism_python
 # that I barely understand.
-# Since we read this file in the FreeCAD Python console, and then "exec" it
-# from within that runtime we need to
+# Since we run this in the FreeCAD Python console, we need to
 # include all our dependencies that (probably) aren't available in that runtime
 """
 Create coordinates for a higher frequency, plane-faced or spherical,
