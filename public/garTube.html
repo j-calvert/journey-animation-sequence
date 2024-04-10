@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Syncrhonized YouTube Video and Mapbox Map</title>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        display: flex; /* Use flex display for the body */
+      }
+      body.vertical {
+        flex-direction: column;
+      }
+      #videoContainer,
+      #divider,
+      #mapContainer {
+        height: 100vh; /* Full viewport height */
+      }
+      .vertical #videoContainer,
+      .vertical #mapContainer {
+        width: 100%;
+      }
+
+      .vertical #divider {
+        width: 100%;
+        height: 8px;
+        cursor: ns-resize;
+      }
+      #divider {
+        flex: none; /* Do not allow the divider to grow or shrink */
+        background-color: #ccc;
+        width: 8px; /* Fixed width */
+        cursor: ew-resize;
+      }
+
+      #videoContainer,
+      #mapContainer {
+        flex-grow: 1; /* Allow video and map containers to grow */
+      }
+      iframe {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="videoContainer"></div>
+    <div id="divider"></div>
+    <div id="mapContainer"></div>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.js"></script>
+    <script src="js/garTube.js" type="module"></script>
+  </body>
+</html>
