@@ -38,3 +38,22 @@ Helper to do all 3 in the right order.
 ```
  
 Second arg is a timezone, for which https://kevinnovak.github.io/Time-Zone-Picker/ can be useful.
+
+## mapTube.html use case
+
+Assuming you've already uploaded a synced video to YouTube...
+
+Create folder in local/Gpx corresponding to the date the track & synced video were recorded and put the GPX file
+in there, then
+
+```
+node ./gpx_to_geojson.js april_29_2024 America/Los_Angeles
+```
+Then move the output from ../local/GeoJson/april_29_2024.tracks.geojson to ../public/data/tracks/april_29_2024.tracks.geojson
+
+Edit the file, and add an element to the top-level "properties" like
+`        "videoId": "37wP7_ZQRVM",`
+
+Then, running locally, you can go to, e.g. 
+
+http://127.0.0.1:5500/mapTube.html?route=april_29_2024
