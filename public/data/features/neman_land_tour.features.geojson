@@ -1,0 +1,75 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-122.345560008845, 46.9802332464796, 0],
+            [-122.345522610106, 46.9784715142887, 0],
+            [-122.345483364687, 46.9766290703328, 0],
+            [-122.345432917435, 46.97488151371299, 0],
+            [-122.345430544285, 46.9747992309044, 0],
+            [-122.345428173344, 46.9747170476173, 0],
+            [-122.345378288367, 46.9729869463422, 0],
+            [-122.350694376328, 46.9729996044399, 0],
+            [-122.350709984225, 46.9738896712082, 0],
+            [-122.350725657648, 46.974783445335, 0],
+            [-122.35075747266, 46.9765975969412, 0],
+            [-122.348117723155, 46.97661337976611, 0],
+            [-122.348138018876, 46.97753849457079, 0],
+            [-122.348158314573, 46.97846359980591, 0],
+            [-122.348178610274, 46.9793886962935, 0],
+            [-122.3481973467, 46.9802463642181, 0],
+            [-122.345560008845, 46.9802332464796, 0]
+          ]
+        ]
+      },
+      "properties": {
+        "name": "52337",
+        "styleUrl": "#Tax_Parcels_738502353173473538_style",
+        "styleHash": "79fca6e3",
+        "styleMapHash": {
+          "normal": "#Tax_Parcels_738502353173473538_style1",
+          "highlight": "#Tax_Parcels_738502353173473538_style0"
+        },
+        "fill-opacity": 0,
+        "Business_Name": "",
+        "City_State": "SOUTH COLBY, WA",
+        "Delivery_Address": "PO BOX 4208",
+        "EditDate": "Tue, 07 Nov 1995 00:00:00 GMT",
+        "EffectiveDate": "",
+        "Exemption_Code": "",
+        "Improvement_Value": "0",
+        "Land_Acres": "60",
+        "Land_Value": "545600",
+        "Landuse_Description": "DESIG FOREST LND RCW 84.33",
+        "Latitude": "46.9748",
+        "Legal_Description": "Section 07  Township 17  Range 04  Quarter 13   THE SW OF THE NE & THE E 1/2 OF THE NW OF THE NE IN SEC 7 EXC RDS SEG F 8195 DESIGNATED FOREST LAND RCW 84.33 1972 60.00 ACRES CONT`D. 1992 AFN 823213.",
+        "Longitude": "-122.34807",
+        "MapLegend": "Base Parcel",
+        "OBJECTID": "52337",
+        "RTSQQ": "04170713",
+        "RetiredDate": "",
+        "Site_Address": "6514 304TH ST E",
+        "SubtypeCD": "0",
+        "TaxParcelComment": "",
+        "TaxParcelLevel": "0",
+        "TaxParcelMultiPartCount": "1",
+        "TaxParcelNumber": "0417071006",
+        "TaxParcelType": "Base Parcel",
+        "TaxParcelUnit": "",
+        "TaxParcelUnitType": "",
+        "Tax_Area_Code": "640",
+        "Tax_Senior_Exemption": "",
+        "Taxable_Value": "10290",
+        "Use_Code": "8800",
+        "X_Coordinate": "1179128.5781",
+        "Y_Coordinate": "603999.46",
+        "Zipcode": "98384-0208"
+      }
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Video and Map Sync with Mapbox</title>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v2.3.1/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        left: 0;
+      }
+      #videoContainer {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        right: 0;
+      }
+      #slider {
+        position: absolute;
+        width: 100%;
+        bottom: 50px;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fullcontainer" class="viewport-full relative scroll-hidden">
+    <div id="videoContainer">
+      <video id="video" width="100%" controls preload="auto">
+        <source src="assets/H265.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    <div id="map"></div>
+    <input
+      type="range"
+      id="slider"
+      min="0"
+      max="100"
+      value="0"
+      style="width: 100%"
+    />
+
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.js"></script>
+    <script src="js/garfield.js" type="module"></script>
+  </body>
+</html>

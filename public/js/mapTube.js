@@ -34,6 +34,36 @@ function calculateAggregateDistances(lineString) {
   return distances;
 }
 
+const addStaticFeatures = async (map) => {
+  const response = await fetch(`./data/features/${route}.features.geojson`);
+  if (response.ok) {
+    const featureJson = await response.json();
+    // Draw the static features, like polygons
+    featureJson.features.forEach((feature) => {
+      if (feature.geometry.type === 'Polygon') {
+        const key = feature.properties.key ?? feature.properties.name;
+        // Draw a mapboxgl polygon
+        map.addSource(key, {
+          type: 'geojson',
+          data: feature,
+        });
+
+        // Add a layer to render the polygon
+        map.addLayer({
+          id: `${key}-layer`,
+          type: 'line',
+          source: key,
+          paint: {
+            'line-color': '#ffffff',
+            // 'line-width': 2, // Set the outline thickness to 3px
+
+          },
+        });
+      }
+    });
+  }
+};
+
 // Wrapping EVERYTHING in an IIFE (Immediately Invoked Function Expression)
 // so we can block waiting on the GeoJson load
 const runTour = async () => {
@@ -129,7 +159,7 @@ const runTour = async () => {
     const map = new mapboxgl.Map({
       container: 'mapContainer',
       projection: 'globe',
-      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      style: 'mapbox://styles/mapbox/satellite-v9',
       zoom: 14,
       center: clocation.lngLat,
       pitch: clocation.pitch,
@@ -381,7 +411,8 @@ const runTour = async () => {
       add3D();
       console.log('Added 3D');
       // Define a function that will be called when the API is ready
-
+      addStaticFeatures(map);
+      console.log('Added static features');
       const layerName = getLineLayer(map, lineStringKey, lineString);
       const linePainter = getLinePainter(map, layerName);
 

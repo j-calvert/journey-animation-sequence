@@ -1,7 +1,6 @@
+// Copy pasta of animate-path.js, with visit stuff removed because now we're showing this alongside 360 video
 import { updateClock } from './clock-utils.js';
 import moveCamera from './moveCamera.js';
-import { visitPano } from './fly-visit-pano.js';
-import { visitImage } from './fly-visit-image.js';
 import {
   DEBUG_INFO,
   speedupToImageDuration,
@@ -9,7 +8,6 @@ import {
   SPEEDUP_PIC_CUTOFF,
   SEGMENT_START_ZOOM,
 } from './config.js';
-
 const UX_DEBOUNCE = 500;
 const round = (f, pot) => Math.round(f * pot) / pot;
 
@@ -89,22 +87,7 @@ const animatePath = async ({ map, path, points, paintLine }) => {
   return new Promise(async (resolve) => {
     animateUIOn();
     curSpeedup = zoomToSpeedup(map.getZoom());
-    const pauseForPic = (pausing) => {
-      if (pausing) {
-        animateUIOff();
-        toggleUIElements(false);
-        isPaused = true;
-        prevTime = undefined;
-      } else {
-        animateUIOn();
-        toggleUIElements(true);
-        clock_element.style.display = 'block';
-        date_element.style.display = 'block';
-        other_output_element.style.display = 'block';
-        isPaused = false;
-      }
-    };
-    const pathDistance = turf.length(path);
+    const pathDistance = turf.lineDistance(path);
     const coordDurations = path.properties.coordDurations;
     toggleUIElements(false);
     lastMove = moveCamera({
