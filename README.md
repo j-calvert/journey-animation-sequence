@@ -12,6 +12,9 @@ I've been designing the UX by trial-and-error.  Grateful for any feedback or sug
 
 [My multi-week trips in 2022](https://jeremycalvert.com/)
 
+## Another UI experiment
+[MapTube](https://jeremycalvert.com/mapTube.html?route=car_free_sr20) should work with any YouTube video syncronized with start/stop of GPS recording.
+
 ## NOTE
 
 Everything is world-readable.  Not using any data storage or auth layers.  Rather, we upload everything to firebase host and serve it up from there, for now.

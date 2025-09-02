@@ -168,7 +168,30 @@ const animatePath = async ({ map, path, points, paintLine }) => {
           resolve();
           return;
         }
-        const p = turf.nearestPointOnLine(path, path.geometry.coordinates[i]);
+        let coord = path.geometry.coordinates[i];
+        if (
+          !Array.isArray(coord) ||
+          coord.length < 2 ||
+          coord.some((v) => typeof v !== 'number' || isNaN(v))
+        ) {
+          console.error('Invalid coordinate at index', i, coord);
+          animateUIOff();
+          resolve();
+          return;
+        }
+        let p;
+        try {
+          p = turf.nearestPointOnLine(path, coord);
+        } catch (err) {
+          console.error('Error in turf.nearestPointOnLine:', err, {
+            i,
+            coord,
+            path,
+          });
+          animateUIOff();
+          resolve();
+          return;
+        } // const p = turf.nearestPointOnLine(path, path.geometry.coordinates[i]);
         const animationPhase = p.properties.location / pathDistance;
 
         other_output_element.innerHTML = `Current speedup: ${Math.round(
